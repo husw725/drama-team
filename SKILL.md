@@ -1,28 +1,32 @@
 ---
 name: hermes-short-drama-team
-description: 使用 Hermes Agent 搭建多 Agent 协作的短剧编剧系统 — 从小说到剧本、分镜、AI生图Prompt的全流程，含视觉资产一致性管控与独立审核机制
-version: 2.3.1
+description: 短剧编剧全流程系统 — 严格按集串行生成，含剧集连续性追踪、伏笔管理、视觉一致性管控与独立审核机制
+version: 2.5.0
 author: Hermes Agent + User
 license: MIT
 metadata:
   hermes:
-    tags: [Short-Drama, Hermes-Agent, Multi-Agent, Scriptwriting, Creative-AI, Visual-Consistency, Scene-Reference, Prop-Reference]
+    tags: [Short-Drama, Scriptwriting, Creative-AI, Visual-Consistency, Continuity, Foreshadowing, Sequential-Generation]
     related_skills: [hermes-agent, writing-plans, novel-to-short-drama-adaptation, short-drama-production-index]
 ---
 
-# Hermes Agent 短剧编剧团队 v2.2
+# Hermes Agent 短剧编剧团队 v2.5
 
-> 使用 Hermes Agent 搭建多 Agent 协作的短剧编剧系统，解决 AI 一次性生成不符合短剧商业逻辑的问题。
-> **v2.0 新增**：视觉资产清单阶段 + Prompt 强制注入 + 审核员一致性检查，实现跨集视觉一致性。
-> **v2.2 新增**：场景/道具 Reference 体系 — 独立场景图和道具图 prompt，关键帧通过引用标记 `[ref: S-XX]` 指向，大幅精简 prompt 并保证跨集一致性。
-> **v2.3 新增**：三文件架构 — `characters.md`（角色身份）+ `scene_prop_data.json`（场景/道具 Reference Prompts）+ `manifest.md`（服装/表情/全局规则），单一职责，互不重复。manifest.md 从 46KB 精简到 16KB（-63%）。
+> 短剧编剧全流程系统：从小说/Idea到剧本、分镜、AI生图Prompt。
+> **v2.0 新增**：视觉资产清单 + Prompt 强制注入 + 审核员一致性检查。
+> **v2.2 新增**：场景/道具 Reference 体系 — `[ref: S-XX]` 标记。
+> **v2.3 新增**：三文件架构 — `characters.md` + `scene_prop_data.json` + `manifest.md`。
+> **v2.4 🔥 重大变更**：**严格按集串行生成**，新增 `continuity.md` 连续性追踪 + 伏笔回收管理 + 跨集交接协议。
+> **v2.5 🔥 缺陷修复**：输入处理标准化（小说/PDF/Idea）+ 上下文截断策略 + 读者反馈模拟（三虚拟读者）+ 质量回退链 + 视觉资产变更检测 + 串行/并行明确划分 + 时间预算管理 + 文件依赖关系图。
 
 ## 核心问题
 
-传统 AI 剧本创作一次性生成，存在三大问题：
+传统 AI 短剧创作存在五大问题：
 1. **节奏/爽点/付费转化** — 缺乏对短剧特有规律的理解
-2. **跨集视觉不一致** — 角色服装、道具、场景在AI生图时漂移
-3. **编剧自批** — 缺乏独立审核，质量问题到生图阶段才发现
+2. **跨集叙事断裂** — 多子Agent并行生成时，EP-03不知道EP-02的悬念、角色状态、伏笔，导致剧情不连贯
+3. **跨集视觉不一致** — 角色服装、道具、场景在AI生图时漂移
+4. **编剧自批** — 缺乏独立审核，质量问题到生图阶段才发现
+5. **伏笔无追踪** — 埋下的线索无人回收，"紫色咬痕"在EP-03出现，EP-10还是没解释
 
 ## 解决方案架构
 
@@ -30,18 +34,18 @@ metadata:
 
 | Agent | 职责 |
 |-------|------|
-| **主编剧** (主 Agent) | 负责创作剧本、分镜、AI Prompts |
+| **主编剧** (主 Agent) | 严格按集串行创作剧本、分镜、AI Prompts |
 | **视觉导演** (Visual Director) | 创建视觉资产清单，定义角色外观、服装、道具、场景的统一视觉规范 |
-| **Script Aligner** | 独立审核剧本/分镜/Prompts，返回 PASS/FAIL（含视觉一致性检查） |
-| **Script Recorder** | 记录创作全过程，维护项目记忆 |
+| **Script Aligner** | 独立审核剧本/分镜/Prompts，返回 PASS/FAIL（含视觉一致性+跨集连续性检查） |
 
 ### 核心机制
 
-1. **delegate_task 原生支持** — Hermes 内置 `delegate_task` 工具，零额外成本创建子 Agent
-2. **六阶段创作流程** — 大纲 → 人物 → **视觉资产清单** → 剧本 → 分镜 → AI Prompts，每阶段独立文档
-3. **视觉资产驱动** — 所有 Prompts 强制注入视觉资产清单中的角色描述，确保跨集一致性
-4. **ReAct 循环优化** — Aligner 审核，不达标返回修改建议，循环直到通过
-5. **文档驱动架构** — 所有内容分文件存储，支持断点续写
+1. **🔥 严格按集串行生成（v2.4 重大变更）** — 不使用多子Agent并行。主Agent逐集完成：EP-01剧本→审核→分镜→Prompts→提取连续性信息→EP-02...。避免会话隔离导致的叙事断裂。
+2. **🔥 连续性追踪文件 `continuity.md`（v2.4 新增）** — 每集完成后自动更新，记录伏笔、悬念、角色状态变化，下一集开始前强制读取。
+3. **六阶段创作流程** — 大纲 → 人物 → **视觉资产清单** → **按集循环（剧本→分镜→Prompts）**
+4. **视觉资产驱动** — 所有 Prompts 强制注入视觉资产清单中的角色描述，确保跨集一致性
+5. **ReAct 循环优化** — Aligner 审核（含跨集连续性），不达标返回修改建议，循环直到通过
+6. **文档驱动架构** — 所有内容分文件存储，支持断点续写
 
 ## 项目目录结构
 
@@ -49,6 +53,7 @@ metadata:
 project/
 ├── TASK.md                      # 任务进度跟踪
 ├── outline.md                   # 故事大纲
+├── continuity.md                # 🔥 v2.4 剧集连续性追踪（伏笔/悬念/角色状态/交接记录）
 ├── characters/
 │   └── characters.md            # 人物设定（性格、关系、动机、弧光）
 ├── visual_assets/
@@ -67,20 +72,608 @@ project/
 └── script.progress.md           # 创作进度记录
 ```
 
-## 六阶段工作流
+## 六阶段工作流（v2.4 — 按集串行 ⭐）
 
 ```
-┌──────────┐    ┌──────────┐    ┌──────────────┐    ┌────────┐    ┌──────────┐    ┌────────────┐
-│ 1.大纲   │ →  │ 2.人物   │ →  │ 3.视觉资产   │ →  │ 4.剧本 │ →  │ 5.分镜   │ →  │ 6.Prompts  │
-│ (大纲)   │    │ (性格)   │    │ (外观规范)   │    │ (故事) │    │ (镜头)   │    │ (生图指令) │
-└──────────┘    └──────────┘    └──────────────┘    └────────┘    └──────────┘    └────────────┘
-     ✅            ✅               ✅                  ✅            ✅               ✅
-  人工确认      人工确认        人工确认（关键）   Aligner审核    Aligner审核    Aligner审核
+┌──────────┐    ┌──────────┐    ┌──────────────┐
+│ 1.大纲   │ →  │ 2.人物   │ →  │ 3.视觉资产   │  ← 全局阶段（只跑一次）
+│ (大纲)   │    │ (性格)   │    │ (外观规范)   │
+└──────────┘    └──────────┘    └──────────────┘
+     ✅            ✅               ✅
+  人工确认      人工确认        人工确认（关键）
+
+         ↓
+    ┌───────────────────────────────────────────────────────────┐
+    │              🔥 按集循环（串行，不是并行！）                │
+    │                                                           │
+    │  对 EP-01 → EP-02 → ... → EP-N 依次执行：               │
+    │                                                           │
+    │  ┌────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐ │
+    │  │ 4.剧本 │→ │ 5.分镜   │→ │ 6.Prompts │→│ 7.更新连续性│ │
+    │  │        │  │          │  │          │  │ 文件        │ │
+    │  └────────┘  └──────────┘  └──────────┘  └────────────┘ │
+    │     ↓               ↓            ↓                       │
+    │  Aligner审      Aligner审     Aligner审                  │
+    │  (含连续性)     (含连续性)   (含连续性)                  │
+    │                                                           │
+    │  ⚠️ 上一集未通过审核 → 不进入下一集                        │
+    │  ⚠️ 每集开始前必须读取 continuity.md                       │
+    │  ⚠️ 每集结束后必须更新 continuity.md                       │
+    └───────────────────────────────────────────────────────────┘
+```
+
+### 🔥 v2.4 关键变更：按集串行，不再并行
+
+**为什么必须串行？**（2026-05-10 验证结论）
+
+多子Agent并行生成（如 delegate_task 同时生成 EP-01~EP-05）的致命缺陷：
+- **会话隔离** — EP-03 的 Agent 不知道 EP-02 发生了什么
+- **悬念丢失** — EP-02 结尾的 Cliffhanger 在 EP-03 开头没有被回收
+- **角色状态漂移** — EP-02 中主角受了重伤，EP-03 中已经活蹦乱跳
+- **伏笔无人回收** — EP-01 埋的线索到了 EP-10 还没有人提
+- **冲突模式重复** — 没有"上一集做了什么"的记忆，容易重复同样的冲突套路
+
+**串行生成的优势：**
+- 同一个 Agent 会话，完整上下文记忆
+- 每集可以精确承接上一集的悬念和情绪
+- 伏笔埋下后有追踪，确保后续回收
+- 冲突模式自然升级（因为知道之前用过什么）
+
+### 阶段 4-6（v2.4 — 按集串行循环 ⭐ 核心变更）
+
+> **不再批量生成！** 改为逐集精雕：EP-01 三件套 + Aligner 审核 → 更新连续性文件 → EP-02 三件套 + 审核 → ...
+
+**每集执行流程：**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  for EP in [EP-01, EP-02, ..., EP-N]:                          │
+│                                                                 │
+│  Step 0: 读取上下文                                              │
+│    - 读 continuity.md（上一集悬念、伏笔状态、角色状态）             │
+│    - 读 outline.md 中对应集的分集梗概                             │
+│    - 读 上一集 script/EP-XX.md 的结尾（特别是 Cliffhanger）        │
+│                                                                 │
+│  Step 1: 编剧 → script/EP-XX.md                                  │
+│    - 必须回收上一集结尾悬念（开篇 3 秒）                           │
+│    - 必须有新的冲突升级                                           │
+│    - 必须处理到期伏笔（检查 continuity.md 中 due_episode）         │
+│    - 可以埋新伏笔                                                 │
+│                                                                 │
+│  Step 2: Aligner 审核（含跨集连续性）                              │
+│    - 新增检查：是否回收了上一集 Cliffhanger？                     │
+│    - 新增检查：是否处理了到期伏笔？                               │
+│    - 新增检查：冲突模式是否与上集重复？                           │
+│    - FAIL → 重写 → 再审核（最多 3 轮，否则人工介入）              │
+│                                                                 │
+│  Step 3: 分镜 → storyboard/EP-XX.md                              │
+│    - 同上 Aligner 审核                                           │
+│                                                                 │
+│  Step 4: Prompts → prompts/EP-XX.md                              │
+│    - 同上 Aligner 审核                                           │
+│                                                                 │
+│  Step 5: 更新 continuity.md                                       │
+│    - 记录本集新埋伏笔                                             │
+│    - 标记本集回收的伏笔                                           │
+│    - 更新角色状态变化                                             │
+│    - 记录本集结尾 Cliffhanger                                     │
+│                                                                 │
+│  → 进入下一集                                                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 🔥 continuity.md — 剧集连续性追踪文件
+
+> **这是 v2.4 最核心的新增文件。** 它是连接集与集之间的"叙事记忆"，确保每一集都知道之前的故事状态。
+
+**文件格式：**
+
+```markdown
+# 剧集连续性追踪 (Continuity Tracker)
+
+> 自动生成，每集更新。下一集编剧开始前必须读取此文件。
+
+---
+
+## 当前进度
+- **已完成**: EP-01, EP-02
+- **进行中**: EP-03
+- **总集数**: 12 集
+
+---
+
+## 伏笔管理 (Foreshadowing)
+
+| ID | 描述 | 埋入集 | 计划回收集 | 状态 | 备注 |
+|----|------|--------|-----------|------|------|
+| F-01 | Laura颈间紫色咬痕发光 | EP-01 | EP-04 | 🟡 待回收 | 与Carmilla的吸血鬼身份相关 |
+| F-02 | 父亲撕毁的名册关键页 | EP-03 | EP-06-07 | 🔵 已埋 | 涉及秘密社团名单 |
+| F-03 | 老仆人可疑的眼神 | EP-02 | ? | 🟠 未定 | 可能是卧底 |
+| F-04 | 地下室的钟声 | EP-01 | EP-05 | ✅ 已回收 (EP-03) | 已确认是密室机关 |
+
+---
+
+## 上一集结尾 (Last Cliffhanger)
+
+### EP-02 结尾
+Carmilla化为雾气消失，Laura颈间的咬痕开始发出紫色光芒。
+Laura对着空房间说："你到底是谁？"
+
+**下一集（EP-03）必须：**
+1. 开篇直接承接：Laura触摸发光的咬痕
+2. 揭示或推进：紫光与Carmilla的联系
+3. 建立新的悬念
+
+---
+
+## 角色当前状态 (Character State)
+
+| 角色 | 当前状态 | 变化时间 |
+|------|---------|---------|
+| Laura | 颈间有紫色发光咬痕，恐惧但开始调查 | EP-01至今 |
+| Carmilla | 身份神秘，已吸血一次，表现出矛盾情感 | EP-02 |
+| 父亲 | 发现女儿异常，开始怀疑 | EP-03 |
+| 老仆人 | 行为可疑，暗中观察Laura | EP-02 |
+
+---
+
+## 冲突模式记录 (Conflict Pattern Log)
+
+| 集数 | 冲突类型 | 具体表现 |
+|------|---------|---------|
+| EP-01 | 超自然入侵 | 吸血鬼咬人 |
+| EP-02 | 身份谜团 | Carmilla现身+消失 |
+| EP-03 | 信息争夺 | 父亲撕毁名册 |
+
+**⚠️ 下一集（EP-04）应避免重复以上冲突类型，可考虑：情感对峙 / 外部威胁 / 信任背叛**
+
+---
+
+## 未解决问题 (Open Questions)
+
+1. Carmilla 为什么选择 Laura？（计划 EP-05 揭示）
+2. 名册上记录了什么秘密社团？（计划 EP-06-07）
+3. 老仆人是否知道 Carmilla 的身份？（待观察）
+4. 紫色光芒是诅咒还是礼物？（计划 EP-04 推进）
+```
+
+**更新规则（每集完成后执行）：**
+
+1. **伏笔管理表** — 新增本集埋下的伏笔，标记本集回收的伏笔
+2. **Last Cliffhanger** — 记录本集结尾悬念，标注下一集必须承接的内容
+3. **角色状态** — 更新因本集剧情发生变化的角色状态
+4. **冲突模式** — 记录本集冲突类型，供下一集参考（避免重复）
+5. **未解决问题** — 更新问题列表，调整回收计划
+
+**编剧读取规则（每集开始前执行）：**
+
+1. 必须读取 `continuity.md` 全文
+2. 检查伏笔表：是否有伏笔的 `due_episode` = 当前集？→ 必须处理
+3. 检查 Last Cliffhanger：上一集悬念 → 必须在开篇回收
+4. 检查冲突模式：避免与最近 2 集使用相同冲突类型
+5. 检查角色状态：确保角色行为符合当前状态
+
+### 🔥 上下文长度管理（v2.5 ⭐ 新增）
+
+> **核心缺陷修复**：随着集数增加，continuity.md 越长越大，EP-15+ 时上下文可能超过 AI 限制。需要智能截断。
+
+**截断策略（当 continuity.md > 6000 字符时触发）：**
+
+```
+优先级（高→低，高优先级保留，低优先级截断）：
+
+1. 【必须保留】
+   - 当前进度（5行）
+   - Last Cliffhanger（完整）— 这是下一集必须回收的内容
+   - 伏笔管理表 — 只保留状态为"🟡 待回收"和"🔵 已埋"的行
+   - 角色当前状态（完整）— 这是行为一致性的基础
+
+2. 【精简保留】
+   - 冲突模式记录 — 只保留最近 3 集（避免重复需要最近参考）
+   - 未解决问题 — 保留，但每个问题压缩到一句话
+
+3. 【可截断】
+   - 已回收的伏笔（✅ 已回收）— 只保留 ID + 一句话摘要
+   - 超过 5 集前的冲突模式 — 删除
+```
+
+**AI 摘要化方案（当截断后仍超过 8000 字符）：**
+- 调用 AI 对连续性文件做摘要压缩到 3000 字
+- 摘要指令：`将以下连续性文件压缩到3000字以内，保留：当前进度、Last Cliffhanger完整内容、未回收伏笔、角色状态、最近3集冲突模式`
+- 摘要版本存储为 `continuity_summary.md`（轻量版），全量保留 `continuity.md`（完整历史）
+
+**编剧调用规则：**
+- EP-10 之前：读 `continuity.md` 全文
+- EP-10 之后：优先读 `continuity_summary.md`（如存在），否则读截断后的 `continuity.md`
+- 无论哪种，都必须同时读上一集 `script/EP-XX.md` 的完整 Cliffhanger 部分
+
+### 🔥 读者反馈模拟（v2.5 ⭐ 新增）
+
+> **核心缺陷修复**：Aligner 是 AI 审核，缺少"目标观众视角"。短剧的核心是爽点和付费转化，需要模拟真实用户反应。
+
+**三位虚拟读者（每 3-5 集调用一次）：**
+
+| 读者 | 特点 | 关注点 |
+|------|------|--------|
+| **急躁哥** | 刷短视频，3秒没爽点就划走 | 前3秒有没有冲击力？有没有废话？爽点够不够直接？ |
+| **逻辑控** | 剧情党，发现漏洞就弃剧 | 前后矛盾？角色行为不符合动机？时间线对不上？ |
+| **情感党** | 为角色上头，意难平会取关 | 角色弧光？核心关系有没有张力？结局满足吗？ |
+
+**调用方式：**
+
+```python
+# 每完成 3-5 集后调用一次
+from hermes_tools import delegate_task
+
+review_result = delegate_task(
+    goal="以虚拟读者视角评审 EP-01 到 EP-05",
+    context=f"""
+    你是三位虚拟读者的集合体：
+    
+    1. 急躁哥 — 刷短视频用户，3秒没爽点就划走
+    2. 逻辑控 — 剧情党，发现漏洞就弃剧
+    3. 情感党 — 为角色上头，意难平会取关
+    
+    请分别以三个视角评审以下剧本：
+    {script_content}
+    
+    输出格式：
+    ## 急躁哥
+    - EP-XX: 第X秒划走风险（原因）
+    - 建议：...
+    
+    ## 逻辑控
+    - 漏洞1: ...
+    - 建议：...
+    
+    ## 情感党
+    - 最上头的场景: ...
+    - 意难平: ...
+    - 建议：...
+    """,
+    toolsets=['file']
+)
+```
+
+**评审触发时机：**
+- 每完成 3 集（EP-03, EP-06, EP-09...）自动触发
+- 用户手动触发（任何时候）
+- 评审结果写入 `review_report.md`，作为后续优化的参考
+
+### 🔥 质量控制与回退机制（v2.5 ⭐ 新增）
+
+> **核心缺陷修复**：缺少"退出一集"的机制，发现重大逻辑错误后不知道如何修复后续剧集。
+
+**质量门禁（每个阶段通过标准）：**
+
+| 阶段 | 质量门 | 未通过的处理 |
+|------|--------|-------------|
+| 大纲 | 人工确认 | 重写大纲 |
+| 人物 | 人工确认 | 调整角色设定 |
+| 视觉资产 | 人工确认 | 调整视觉规范 |
+| 剧本 | Aligner ≥ 80 | 重写剧本（最多3轮） |
+| 分镜 | Aligner ≥ 80 | 重写分镜（最多3轮） |
+| Prompts | Aligner ≥ 80 | 重写 Prompts（最多3轮） |
+| 读者评审 | 无硬伤 | 根据建议优化 |
+
+**回退链机制（发现前集有重大逻辑错误时）：**
+
+```
+发现 EP-03 有逻辑错误，但 EP-04/EP-05 已经完成：
+
+Step 1: 修复 EP-03
+  - 修改 script/EP-03.md
+  - 重新对齐 Aligner
+  
+Step 2: 更新 continuity.md
+  - 更新 EP-03 的 Cliffhanger
+  - 更新角色状态变化
+  - 更新伏笔表（如果有变更）
+  
+Step 3: 级联回退
+  - EP-04: 读取新的 continuity.md → 检查是否需要修改
+  - EP-05: 同上
+  - 使用"差异检测"：对比修改前/后的 continuity.md，
+    找出受影响的集数（只回退真正受影响的集，不是全部）
+    
+Step 4: 标记已回退
+  - 在 TASK.md 中标记：EP-03 → 回退修复 → EP-04/EP-05 已同步
+```
+
+**回退触发条件：**
+- 人工发现前集有重大逻辑错误
+- 读者评审发现前集有硬伤
+- 后续集无法衔接前集内容（如角色状态不一致）
+
+**爽点密度统计（每 5 集输出一次）：**
+
+```markdown
+## 爽点统计 (EP-01 ~ EP-05)
+
+| 集数 | 爽点类型 | 数量 | 密度（秒/爽点） |
+|------|---------|------|----------------|
+| EP-01 | 反转 | 2 | 35s |
+| EP-02 | 打脸 | 1 | 70s |
+| EP-03 | 复仇 | 3 | 23s |
+| EP-04 | 悬念 | 2 | 35s |
+| EP-05 | 反转+打脸 | 3 | 23s |
+
+⚠️ 警告：EP-02 爽点密度过低（70s/个），建议在下集补偿
+```
+
+### 🔥 视觉资产变更检测（v2.5 ⭐ 新增）
+
+> **核心缺陷修复**：长剧（30+集）后期，新角色/场景/道具不断出现，视觉资产与剧情不同步。
+
+**变更触发条件（每集剧本完成后检查）：**
+
+```
+触发条件 → 操作：
+
+1. 剧本出现新角色名（不在 characters.md 中）
+   → 暂停 → 补充 characters.md + manifest.md → 继续
+
+2. 剧本出现新场景（不在 scene_prop_data.json 中）
+   → 暂停 → 补充 scene_prop_data.json + manifest.md → 继续
+
+3. 剧本出现新关键道具（不在 scene_prop_data.json 中）
+   → 暂停 → 补充 scene_prop_data.json → 继续
+
+4. 角色服装发生重大变化（如入狱→出狱）
+   → 暂停 → 更新 manifest.md 服装指南 → 继续
+```
+
+**自动化检测方法：**
+
+```python
+# 伪代码：检测新角色
+import re
+
+known_chars = set()  # 从 characters.md 提取
+new_chars = set()
+
+for line in script_lines:
+    # 提取对话角色名
+    for match in re.finditer(r'^([A-Z][A-Z ]*):', line):
+        name = match.group(1).strip()
+        if name not in known_chars and name not in ['NARRATOR', 'VOICEOVER']:
+            new_chars.add(name)
+
+if new_chars:
+    print(f"⚠️ 发现新角色：{new_chars}")
+    print("→ 请更新 characters.md + manifest.md")
+```
+
+**视觉资产维护检查清单（每 5 集执行一次）：**
+
+- [ ] characters.md 中所有角色都还在剧情中？（移除退场角色或标记"已退场"）
+- [ ] manifest.md 服装指南是否覆盖当前剧情阶段？
+- [ ] scene_prop_data.json 场景是否覆盖当前使用的场景？
+- [ ] 色调规则是否需要调整？（如从"冷蓝灰"过渡到"暖金色"）
+
+### 🔥 串行 vs 并行的明确划分（v2.5 ⭐ 新增）
+
+> **核心缺陷修复**：不是所有阶段都必须串行。某些阶段可以并行以提高效率。
+
+**必须串行的阶段：**
+
+| 阶段 | 原因 |
+|------|------|
+| 剧本（script） | 每集依赖上一集的 Cliffhanger 和连续性 |
+| 大纲（outline） | 全局性，必须人工确认后进入下一阶段 |
+| 人物（characters） | 全局性，影响后续所有集 |
+| 视觉资产（visual_assets） | 全局性，影响所有 Prompts |
+
+**可以并行的阶段：**
+
+| 阶段 | 并行方式 | 前提条件 |
+|------|---------|---------|
+| 分镜（storyboard） | 如果剧本已全量完成，可以并行写分镜 | 剧本全部 Aligner PASS |
+| Prompts | 如果分镜已全量完成，可以并行写 Prompts | 分镜全部 Aligner PASS |
+| 读者评审 | 可以与剧本并行（评审已完成的集） | 至少 3 集已完成 |
+| 生图（image_gen） | 多账号并行 | Prompts 已完成 |
+| 视频生成（video_gen） | 多账号并行 | 图片已生成 |
+
+**推荐工作流（效率 vs 质量平衡）：**
+
+```
+方案 A：全量串行（质量最高）
+  大纲 → 人物 → 视觉资产 → 
+  EP-01(剧本→分镜→Prompts) → EP-02(剧本→分镜→Prompts) → ...
+  优点：质量最高，连续性最好
+  缺点：速度慢
+
+方案 B：剧本串行 + 分镜/Prompts 批量（推荐 ⭐）
+  大纲 → 人物 → 视觉资产 →
+  剧本：EP-01 → EP-02 → ... → EP-N（串行）
+  ↓
+  分镜：EP-01 ~ EP-N（批量并行）
+  ↓
+  Prompts：EP-01 ~ EP-N（批量并行）
+  优点：剧本质量高，分镜/Prompts 效率高
+  缺点：分镜/Prompts 的连续性略弱
+
+方案 C：全量并行（速度最快）
+  大纲 → 人物 → 视觉资产 →
+  EP-01 ~ EP-N 同时生成（不推荐 ⚠️）
+  优点：速度最快
+  缺点：连续性差，质量低
+```
+
+### 🔥 时间预算管理（v2.5 ⭐ 新增）
+
+> **核心缺陷修复**：每集 70 秒的硬性限制常被打破，后期合成时时间对不上。
+
+**时间预算模板（每集编剧时必须遵守）：**
+
+```
+总时长：70s
+
+预算分配：
+├── 对白时间：35-40s（约 12-15 句 × 3s/句）
+├── 纯动作时间：15-20s（开场 3s + 转场 + 结尾慢推）
+├── 情感留白：5-8s（沉默/表情/反应镜头）
+└── 转场/黑屏：2-5s
+
+强制规则：
+- 开场 3 秒：必须直接进入冲突（不能空镜铺垫）
+- 结尾 5-10 秒：Cliffhanger 慢推（最长 10s）
+- 单个镜头 ≤ 5s（悬念慢推除外）
+```
+
+**时间校验（编剧完成后自动检查）：**
+
+```python
+# 伪代码
+total_time = sum(shot_duration for shot in shots)
+assert abs(total_time - 70) <= 5, f"时间偏差过大：{total_time}s vs 70s"
+
+dialogue_count = len([s for s in shots if s.get('dialogue')])
+assert 12 <= dialogue_count <= 15, f"对白数量：{dialogue_count}（标准 12-15）"
+
+max_shot = max(shots, key=lambda s: s['duration'])
+assert max_shot['duration'] <= 10, f"镜头过长：{max_shot['duration']}s（最长 10s）"
+```
+
+**分镜时间校验（Storyboard 阶段）：**
+
+| 集类型 | 镜头数 | 单镜平均 | 总时长 |
+|--------|--------|---------|--------|
+| 氛围集 | 16-18 | 3.9-4.4s | 70s |
+| 标准集 | 18-22 | 3.2-3.9s | 70s |
+| 恐怖集 | 20-24 | 2.9-3.5s | 70s |
+| 高潮集 | 22-25 | 2.8-3.2s | 70s |
+
+### 🔥 文件依赖关系图（v2.5 ⭐ 新增）
+
+> **核心缺陷修复**：12+ 个文件，新手不知道改了哪个需要同步更新哪些。
+
+**文件依赖关系：**
+
+```
+outline.md
+  ├──→ characters.md（依赖大纲中的角色）
+  │     ├──→ visual_assets/manifest.md（依赖角色设定）
+  │     ├──→ scene_prop_data.json（依赖角色使用的场景/道具）
+  │     └──→ script/EP-XX.md（依赖角色身份）
+  │
+  └──→ continuity.md（依赖大纲中的伏笔规划）
+        └──→ script/EP-XX.md（依赖连续性信息）
+
+visual_assets/manifest.md
+  ├──→ prompts/EP-XX.md（依赖视觉规则）
+  └──→ storyboard/EP-XX.md（依赖色调/光影）
+
+scene_prop_data.json
+  └──→ prompts/EP-XX.md（依赖场景/道具 Reference）
+
+script/EP-XX.md
+  ├──→ storyboard/EP-XX.md（依赖剧本内容）
+  └──→ prompts/EP-XX.md（依赖剧本场景）
+
+storyboard/EP-XX.md
+  └──→ prompts/EP-XX.md（依赖分镜镜头）
+```
+
+**文件变更联动规则：**
+
+| 修改了 | 必须同步更新 | 可选更新 |
+|--------|-------------|---------|
+| outline.md | continuity.md（伏笔规划） | characters.md（如果角色有变化） |
+| characters.md | manifest.md（服装/表情） | scene_prop_data.json（如果新角色有新场景） |
+| manifest.md | prompts/EP-XX.md | 无 |
+| script/EP-XX.md | storyboard/EP-XX.md, prompts/EP-XX.md, continuity.md | 无 |
+| storyboard/EP-XX.md | prompts/EP-XX.md | 无 |
+| continuity.md | 下一集的 script/EP-XX.md | 无 |
+
+---
+
+### 阶段 0：输入处理（v2.5 ⭐ 新增）
+
+> **核心缺陷修复**：用户输入形式多样（小说文本/PDF/Idea描述/灵感碎片），必须先标准化再进入大纲阶段。
+
+**输入类型识别与处理策略：**
+
+| 输入类型 | 处理方式 | 输出 |
+|---------|---------|------|
+| **完整小说**（文本/PDF） | 读全文 → 提取核心情节、角色、世界观 → 生成改编规划 | 改编规划 → 进入阶段1 |
+| **小说片段/大纲** | 直接分析 → 补全缺失信息 → 生成改编规划 | 改编规划 → 进入阶段1 |
+| **Idea描述**（文字/语音） | 澄清需求 → 扩写世界观 → 生成大纲草案 | 大纲草案 → 进入阶段1 |
+| **灵感碎片**（图片/关键词） | 视觉分析 → 头脑风暴 → 生成Idea描述 | Idea描述 → 进入阶段1 |
+
+**小说输入处理流程（最常见场景）：**
+
+```
+Step 0a: 读取输入
+  - 文本/PDF → 提取全文
+  - 判断类型：完整小说 / 章节片段 / 大纲
+  
+Step 0b: 内容分析
+  - 提取核心角色（≥3个）
+  - 提取主要冲突线
+  - 提取世界观设定
+  - 估算总字数 → 决定集数（每集70s ≈ 1000-1500字小说内容）
+  
+Step 0c: 改编规划
+  - 确定改编策略（忠实原著 / 创意改编 / 大纲驱动）
+  - 确定集数（12/24/36集）
+  - 确定风格（哥特暗黑 / 甜宠 / 复仇 / 悬疑...）
+  - 确定核心卖点（双女主 / 宿敌 / 禁忌之恋...）
+  
+Step 0d: 进入阶段1（大纲生成）
+```
+
+**Idea输入处理流程：**
+
+```
+Step 0a: 接收Idea（文字/语音转文本）
+Step 0b: 澄清需求（如有缺失）
+  - 风格？（哥特/甜宠/复仇...）
+  - 集数？（12/24/36）
+  - 核心关系？（双女主/宿敌...）
+  - 结局类型？（HE/BE/开放）
+Step 0c: 扩写世界观（世界观+设定+规则）
+Step 0d: 生成大纲草案 → 进入阶段1
 ```
 
 ### 阶段 1-2：大纲 + 人物设定
 
 标准流程 — 确定故事方向、核心角色、人物关系、结局类型。
+
+**大纲标准结构（必须包含）：**
+```markdown
+# 故事大纲
+
+## 三幕结构
+### 第一幕：建立（EP-01 到 EP-N/3）
+- 核心事件
+- 角色建立
+- 激励事件
+
+### 第二幕：对抗（EP-N/3 到 EP-2N/3）
+- 冲突升级节点
+- 中段转折点
+- 最低谷时刻
+
+### 第三幕：解决（EP-2N/3 到 EP-N）
+- 高潮构建
+- 最终对决
+- 结局（HE/BE/开放）
+
+## 分集梗概
+### EP-01: 标题
+- 核心事件（1-2句）
+- 爽点类型（复仇/打脸/反转...）
+- 结尾悬念
+### EP-02: 标题
+...
+
+## 伏笔规划表（v2.5 ⭐）
+| ID | 描述 | 埋入集 | 回收集 | 重要性 |
+|----|------|--------|--------|--------|
+| F-01 | 紫色咬痕的秘密 | EP-01 | EP-04 | 🔴 核心 |
+| F-02 | 名册上的名字 | EP-03 | EP-06-07 | 🟡 重要 |
+```
 
 ### 阶段 3：视觉资产 — 三文件架构（v2.3 ⭐）
 
@@ -575,12 +1168,27 @@ a vampire woman looking in terror...
 
 > **核心原则：编剧和审核员必须完全独立——审核员不知道编剧是谁、不受编剧影响**
 
-### 流程
+### 流程（v2.4 — 串行模式）
+
+> **关键变更**：不再用多子Agent并行生成。主Agent逐集创作，Aligner 只做独立审核。
+
 1. **编剧（主Agent）** 写完 EP-XX 三件套（script/storyboard/prompts）
 2. **派独立审核员**：`delegate_task` 创建子Agent，给它 Aligner v4.0 的完整审核prompt
 3. **审核员输出**：PASS ✅ / FAIL ❌ / ⚠️ 需修改
 4. **如果 FAIL**：编剧根据审核意见重写，重新派审核员
-5. **如果 PASS**：进入下一集
+5. **如果 PASS**：更新 continuity.md → 进入下一集
+6. **如果 FAIL 超过 3 次**：人工介入修改
+
+### 审核范围扩展（v2.4 新增）
+
+Aligner 现在增加跨集连续性检查（5分）：
+
+| 检查项 | 标准 | 扣分 |
+|--------|------|------|
+| 悬念回收 | 是否回收了上一集 Cliffhanger（开篇 3 秒） | -2 |
+| 伏笔处理 | 到期伏笔是否处理（查 continuity.md） | -2 |
+| 角色状态 | 角色行为是否符合当前状态 | -2 |
+| 冲突不重复 | 是否与前 2 集冲突类型不同 | -1 |
 
 ### 关键规则
 - 审核员 **不读编剧的自检表** — 只看成品本身
@@ -592,16 +1200,57 @@ a vampire woman looking in terror...
 
 ### delegate_task 调用示例
 
+**编剧调用（v2.4 — 串行模式）：**
 ```python
+# 先读取上下文
+continuity = read_file('continuity.md')
+outline = read_file('outline.md')
+prev_script = read_file('script/EP-02.md') if current_ep > 1 else ''
+
 result = delegate_task(
-    goal="审核 EP-01 三件套是否符合 Aligner v4.0 标准",
-    context="""
+    goal=f"编写 EP-{ep_num:02d} 剧本",
+    context=f"""
+    你是主编剧，正在编写第 {ep_num} 集剧本。
+    
+    【连续性追踪（必须遵守）】
+    {continuity}
+    
+    【大纲中本集梗概】
+    {outline_section}
+    
+    【上一集结尾（必须回收）】
+    {prev_cliffhanger}
+    
+    【视觉资产清单】
+    {manifest}
+    """,
+    toolsets=['file']
+)
+```
+
+**审核员调用（v2.4 — 含连续性检查）：**
+```python
+continuity = read_file('continuity.md')
+
+result = delegate_task(
+    goal=f"审核 EP-{ep_num:02d} 三件套是否符合 Aligner v4.0 标准",
+    context=f"""
     你是Script Aligner审核员。
-    审核标准：Aligner v4.0（10项评分，含视觉一致性）
-    剧本内容：[EP-01 剧本完整内容]
-    分镜内容：[EP-01 分镜完整内容]
-    Prompts内容：[EP-01 Prompts完整内容]
+    审核标准：Aligner v4.0（10项评分 + 跨集连续性5分）
+    
+    剧本内容：[EP-XX 剧本完整内容]
+    分镜内容：[EP-XX 分镜完整内容]
+    Prompts内容：[EP-XX Prompts完整内容]
     视觉资产清单：[visual_assets/manifest.md 完整内容]
+    
+    【连续性追踪（必须检查）】
+    {continuity}
+    
+    特别检查：
+    1. 是否回收了上一集 Cliffhanger？
+    2. 到期伏笔是否处理？
+    3. 角色状态是否一致？
+    4. 冲突类型是否与前2集不同？
     """,
     toolsets=['file']
 )
@@ -647,12 +1296,25 @@ result = delegate_task(
 - 缺少角色外观描述 → -2分
 - 场景与清单不一致 → -2分
 
+### 跨集连续性检查（v2.4 新增 🔥）— 5分
+**检查项：**
+- 是否回收了上一集 Cliffhanger（开篇 3 秒必须承接）
+- 到期伏笔是否处理（查 continuity.md 伏笔管理表）
+- 角色行为是否符合当前状态（查角色状态表）
+- 冲突类型是否与前 2 集不同（查冲突模式记录）
+**扣分规则：**
+- 未回收上一集悬念 → -2分
+- 到期伏笔未处理 → -2分
+- 角色状态不一致 → -2分
+- 冲突模式与前 2 集重复 → -1分
+
 ### 输出格式
 ## EP-XX 审核报告
 ### 分镜节奏 | 维度 | 标准 | 实际 | 结果
 ### 故事审核 | 维度 | 权重 | 判定 | 扣分
 ### 视觉一致性 | 检查项 | 清单值 | 实际值 | 结果
-**总分: XX/100**
+### 跨集连续性 | 检查项 | 标准 | 实际 | 结果
+**总分: XX/110**（故事95 + 视觉5 + 连续性5 = 105，分镜节奏5）
 **结论: PASS ✅ / ⚠️需修改 / FAIL ❌**
 **修改建议: 1. 2. 3.**
 ```
@@ -1279,6 +1941,274 @@ tar --exclude='__pycache__' -czf /path/to/desktop/project-name.tar.gz -C /path/t
 
 ---
 
+## Drama Studio 系统架构 (v2026-05-09 新增)
+
+> 将 drama-team 的 6 阶段编剧流程扩展为 **12 阶段端到端短剧生成系统**，从用户输入小说/Idea 到最终成片输出。
+> 项目位于 `~/.hermes/tasks/drama-studio/`，设计文档见 `DESIGN.md`。
+
+### 架构演进
+
+```
+drama-team (6 阶段): 大纲 → 人物 → 视觉资产 → 剧本 → 分镜 → Prompts
+                              ↓
+Drama Studio (12 阶段): 输入处理 → 编剧层(7) → 制作层(4) → 交付
+```
+
+### 11 阶段全貌 (v2026-05-09 → v2026-05-10 确认: 11 阶段，无 input_analysis/dubbing)
+
+> **关键合并**：`input_analysis` 合并到 `ip_analysis` — 第一阶段 system prompt 增加"如果用户提供小说，先做内容分析"逻辑，不单独成一阶段。
+
+```
+📝 输入 + 编剧层 (全局，只跑一次)
+  1️⃣  ip_analysis       IP 世界观分析（含小说内容解析）
+  2️⃣  outline           三幕结构大纲、分集梗概
+  3️⃣  characters        角色设定（外貌/性格/关系）
+  4️⃣  visual_assets     视觉风格定义（色调/场景/参考）
+
+🎬 分集层 (按集 EP-01, EP-02...)
+  5️⃣  script           单集剧本 — ⚠️ Aligner 审核 (≥80 PASS)
+  6️⃣  storyboard       分镜表 — ⚠️ Aligner 审核
+  7️⃣  prompts          AI 生图 Prompt — ⚠️ Aligner 审核
+  8️⃣  prompt_optimization 英文→中文 (Seedance 14 项检查)
+
+🎨 制作层 (按集串行)
+  9️⃣  image_gen        Dreamina text2image（角色/场景/特写，全局复用）
+  🔟  video_gen        Seedance 2.0 multimodal2video（自带声音！）
+  1️⃣1️⃣  assembly       FFmpeg 拼接成片
+```
+
+> ⚠️ **关键设计变更 (2026-05-09)**：
+> - **去掉配音阶段** — Seedance 2.0 原生生成带声音的视频，无需 IndexTTS 单独配音
+> - **新增 prompt_optimization 阶段** — 编剧层的英文 prompt 必须经 AI 转为 Seedance 2.0 合规格式（14 项官方检查清单），这是生视频质量的门控
+> - **image_gen 不再按集** — 基础图（角色肖像+场景+特写）全局复用，只跑一次
+
+### 前端设计 (Vite 5174)
+
+三栏布局 + 底部面板：
+- **左侧**：项目列表（名称/状态/进度）
+- **主区**：无限画布（节点编辑器），节点颜色状态：⚪pending → 🔵running → 🟢done → 🔴error → 🟡outdated
+- **底部**：Tab 切换（📄内容查看 / 💬AI 对话修改 / 📋日志 / ▶️预览）
+
+### 后端架构 (Express 3000)
+
+```
+server/
+  index.ts              # Express + WebSocket (端口 3000)
+  ws.ts                 # wsBroadcast() 实时推送
+  prompts.ts            # 各阶段 System Prompt（从 drama-team 技能提取）
+  ai.ts                 # callAI() — vLLM OpenAI API (qwen27b-awq)
+  services/
+    pipeline.ts         # Pipeline orchestrator: runPhase(), alignerLoop()
+  routes/
+    project.ts          # CRUD: /api/projects
+    phase.ts            # 执行: /api/phases/:id/run, /cancel, /order
+  store/
+    store.ts            # 内存 Map + JSON 持久化
+shared/
+  types.ts              # ProjectData, PhaseStatus, PhaseName
+```
+
+### 关键技术决策
+
+| 决策 | 选择 | 理由 |
+|------|------|------|
+| LLM | vLLM + Qwen3.6-27B (qwen27b-awq) | 本地运行，编剧质量足够 |
+| 生图 | Dreamina CLI | 多账号并行，角色一致性 |
+| 视频 | Seedance 2.0 | 关键帧引导法 |
+| 配音 | IndexTTS 2.0 | 零样本声音克隆+情感控制 |
+| 合成 | FFmpeg | 成熟、灵活 |
+| 前端 | Vite + 纯 TS | 轻量，不依赖 React/Vue |
+| 存储 | 先内存 Map → 后期 SQLite | 快速迭代 |
+
+### 已知 Bug / 待修复
+
+- **Storyboard 0 字符问题** (2026-05-09 发现)：Storyboard 阶段运行 6.7 分钟但返回 0 字符。根因：上游上下文（ip_analysis+outline+characters+visual_assets 合计 ~10KB+）过长导致 AI 超时或返回空。修复方向：`gatherUpstreamContext()` 加智能截断策略 — 上游内容 >8000 字符用 AI 摘要化到 2000 字；或按集智能截取（只保留本集出场角色+相关场景）。
+- **Prompt 质量不足**：`prompts.ts` 阶段 prompt 是简化版，缺少 drama-team 技能验证过的创作法则（每集必有冲突、Face-slap 必须直接暴力、分镜硬规则等）。需注入 phase-specific constraints。
+- **Seedance 14 项检查未注入**：`prompt_optimization` prompt 缺少官方 14 项检查清单（中文、单人、分镜时序、情绪外化等），直接导致生视频质量差。
+
+### 端口与启动
+
+- 后端：`npx tsx server/index.ts` (端口 3000)
+- 前端：`npx vite` (端口 5174)
+- **重启前清理**：`pkill -f "tsx server/index.ts"`（旧进程残留导致 EADDRINUSE 崩溃）
+
+### QA 验证结果 (Phase A-B)
+
+| 阶段 | 耗时 | 内容量 | Aligner | 状态 |
+|------|------|--------|---------|------|
+| ip_analysis | ~2.5min | 1668 字 | 无 | ✅ |
+| outline | ~2min | 1613 字 | 无 | ✅ |
+| characters | ~3min | 2274 字 | 无 | ✅ |
+| visual_assets | ~4min | 5560 字 | 无 | ✅ |
+| script (EP-01) | ~4min | 3120 字 | 91/100 PASS (Round 1) | ✅ |
+| storyboard (EP-01) | ~6.7min | 0 字 | — | ❌ 待修（上下文过长） |
+| prompts (EP-01) | 未测试 | — | — | ⏳ |
+
+### Phase C 制作层状态 (2026-05-10 盘点)
+
+| 服务 | 代码状态 | 实机验证 | 备注 |
+|------|---------|---------|------|
+| image_gen (Dreamina) | 🟡 骨架完成 | ❌ 未验证 | CLI 调用+多账号切换+压缩 |
+| video_gen (Seedance) | 🟡 骨架完成 | ❌ 未验证 | 4 张轻量参考+轮询下载 |
+| assembly (FFmpeg) | 🟡 骨架完成 | ❌ 未验证 | 归一化+concat+降级方案 |
+
+### 开发路线
+
+- ✅ Phase A: 基础设施（前后端框架、API、WebSocket、基础布局）
+- ✅ Phase B: 编剧层（IP→大纲→角色→视觉→剧本→分镜→Prompts + Aligner）
+- ✅ **Phase C: 制作层**（prompt_optimization → Dreamina 生图 → Seedance 视频 → FFmpeg 合成）
+- 🔵 Phase D: 高级功能（无限画布集成、AI 对话修改、小说上传、持久化存储）
+
+---
+
+## Phase C 制作层实现指南 (v2026-05-09 新增)
+
+> Phase C 将编剧层的 Prompts 转化为最终成片：prompt 合规性检查 → Dreamina 生图 → Seedance 视频 → FFmpeg 合成。
+> 项目位于 `~/.hermes/tasks/drama-studio/`，设计文档见 `references/drama-studio-design.md`。
+
+### Phase C 架构
+
+```
+编剧输出 (prompts/EP-XX.md)
+    ↓
+prompt_optimization (14 项 Seedance 检查)
+    ↓
+Dreamina text2image (角色基础图 + 关键帧)
+    ↓
+Seedance multimodal2video (关键帧→视频片段，自带声音)
+    ↓
+FFmpeg 拼接 (成片输出)
+```
+
+### 1. prompt_optimization — Prompt 合规性检查 (9️⃣)
+
+**为什么需要？** Seedance 2.0 有严格的 Prompt 格式要求，编剧层输出的英文 prompt 不能直接用于生视频。
+
+**14 项检查清单（官方）：**
+
+| # | 检查项 | 规则 |
+|---|--------|------|
+| 1 | 语言 | 必须是**中文**，不能英文 |
+| 2 | 角色数 | **最多1个角色**（单人动作） |
+| 3 | 场景 | 必须有，但**不做主体** |
+| 4 | 动作 | 必须有，**角色核心内容**，**缓慢渐进** |
+| 5 | 动作限制 | 避免快速移动、大幅旋转、激烈运动 |
+| 6 | 禁止内容 | 不能含文字/字幕 |
+| 7 | 视角 | **平视**，不能极端仰/俯 |
+| 8 | 距离 | **近景或特写**，不能远景 |
+| 9 | 角色特征 | 必须明确（年龄/性别/外貌/服装） |
+| 10 | 角色一致性 | 同一角色外观不变 |
+| 11 | 镜头运动 | 最多一种缓慢运动（推/拉/摇/移） |
+| 12 | 时间描述 | **不能含时间点**（如"夜晚"→"灯光昏暗"） |
+| 13 | 运镜术语 | **不能出现**"俯拍/推镜头/平移" |
+| 14 | 字数 | 不超过 300 字 |
+
+**Prompt 重写模板（✅ 通过所有检查）：**
+```
+{场景背景}。{角色描述}正在{缓慢动作}。{光影氛围}。
+示例：古堡走廊烛火摇曳，石墙斑驳。一位苍白皮肤的年轻女子正缓缓抚摸胸口。她穿着黑色长裙，神情恐惧。昏暗的烛光映照出她紧张的面容。
+```
+
+**Prompt 优化 AI System Prompt 核心要素：**
+- 逐条验证 14 项，不合格则重写
+- 角色描述从上游 `characters.md` + `manifest.md` 提取（不自己编）
+- 输出 JSON 格式：`{optimized: "...", fixes: [{id: N, original: "...", fixed: "..."}]}`
+
+### 2. image_gen — Dreamina 生图 (🔟)
+
+**不再按集生成！** 基础图全局复用：
+- **角色基础图**：每个角色 1-2 张（正面肖像 + 侧面），用于后续关键帧参考
+- **场景图**：每个唯一场景 1 张（无角色纯环境），用于 Seedance 场景参考
+- **特写图**：关键道具/特效（如咬痕/发光）
+
+**Dreamina 使用要点：**
+- CLI 调用：`dreamina text2image --prompt "..." --aspect 9:16 --seed X`
+- 多账号并行（`dreamina-multi-account` skill）
+- 图片压缩 < 500KB 不稳定，建议 864x1536+ ~1MB
+- 每账号同时仅 1 个任务
+
+### 3. video_gen — Seedance 视频生成 (1️⃣1️⃣)
+
+**关键帧引导法（核心工作流）：**
+1. 先 text2image 生成 5-7 张关键图（60% → 90% prompt 强度）
+2. 作为 `--image` 传入 multimodal2video
+3. 每段 prompt 必须有人物动作/位置（否则空房间）
+
+**Seedance 2.0 限制（⚠️ 避免翻车）：**
+- 每段有且仅有 1 个角色（双人易融合/跳变）
+- 动作缓慢渐进，忌大幅移动
+- 场景做背景，"静止+微动作"
+- 特效弱、黑屏/镜子做不好
+- **原生生成带声音的视频**（无需额外配音）
+
+### 4. assembly — FFmpeg 合成 (1️⃣2️⃣)
+
+**拼接逻辑：**
+```bash
+# 将多个视频片段按顺序拼接
+ffmpeg -f concat -i filelist.txt -c copy output.mp4
+```
+
+**filelist.txt 格式：**
+```
+file 'EP-01/shot-01.mp4'
+file 'EP-01/shot-02.mp4'
+...
+```
+
+**已知问题：**
+- 种子账户 984268 无法使用 multimodal2video → 需切账号
+- Prompt 优化是质量门控，不合格直接导致空视频
+- 视频片段时长需与分镜时间对齐
+
+### Phase C 后端实现要点
+
+**services/pipeline.ts 新增方法：**
+- `optimizePrompt()` — 调用 LLM 改写 prompt + 14 项验证
+- `generateImage()` — Dreamina CLI 调用 + 图片路径记录
+- `generateVideo()` — Seedance CLI 调用 + 结果验证
+- `assembleEpisode()` — FFmpeg 拼接 + 成片输出
+
+**数据模型扩展：**
+```typescript
+interface PhaseCData {
+  optimized_prompts: string[];  // 优化后的中文 prompt
+  image_paths: string[];         // Dreamina 输出图片路径
+  video_paths: string[];         // Seedance 输出视频路径
+  final_video: string;           // 成片路径
+}
+```
+
+**常见陷阱：**
+- 编剧 prompt 直接丢给 Seedance → 空视频/画面不符（必须经过优化）
+- 角色基础图质量差 → 所有关键帧漂移（先验证角色图再批量）
+- 账号同时多任务 → Dreamina 排队/失败（串行 or 多账号）
+- Seedance 提示语含英文 → 直接失败（必须中文）
+
+---
+
+## GitHub 同步 (https://github.com/husw725/drama-team)
+
+> 技能本地存储在 `~/.hermes/skills/creative/hermes-short-drama-team/`，通过 git remote 指向 `husw725/drama-team`。本地 skill 文件变化需要手动推送到 GitHub。
+
+**同步流程：**
+```bash
+cd ~/.hermes/skills/creative/hermes-short-drama-team
+# 1. 确保 remote 指向 drama-team 仓库
+git remote set-url origin https://husw725:<TOKEN>@github.com/husw725/drama-team.git
+# 2. 拉取远端（可能遇到 forced update）
+git pull --rebase origin main
+# 3. 添加新文件/变更
+git add -A && git commit -m "feat: ..."
+# 4. 推送
+git push origin main
+```
+
+**常见陷阱：**
+- `git push` 被拒（remote 有新提交）→ `git pull --rebase origin main` 再 push
+- rebase 可能导致本地独有文件丢失（如 `templates/fix_prompts_template.py` 曾丢失）→ 推送后检查文件完整性
+- 本地 skill 文件 vs GitHub 仓库文件可能不同步 → 用 `git log --oneline` 对比确认
+
 ## 相关技能
 
 - `hermes-agent` - Hermes Agent 基础使用
@@ -1287,4 +2217,5 @@ tar --exclude='__pycache__' -czf /path/to/desktop/project-name.tar.gz -C /path/t
 - `short-drama-reviewer` - 多维度用户视角评审
 - `short-dreamina-shot-generation` - 即梦CLI生图工作流
 - `seedance2-short-drama-workflow` - Seedance 2.0 视频生成
+- `drama-canvas-infinite-canvas` - 无限画布节点流水线系统（纯 DOM + CSS Transform，无线自动关联）⭐ **v2026-05-08 取代旧 React Flow 方案**
 - `drama-project-index-page` (已归档至 `.archive/`，内容已合并到本技能的"生产工作台页面"章节)
