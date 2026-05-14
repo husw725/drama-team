@@ -1,7 +1,7 @@
 ---
 name: hermes-short-drama-team
 description: 短剧编剧全流程系统 — 严格按集串行生成，含剧集连续性追踪、伏笔管理、视觉一致性管控与独立审核机制
-version: 2.5.0
+version: 2.7.0
 author: Hermes Agent + User
 license: MIT
 metadata:
@@ -10,7 +10,7 @@ metadata:
     related_skills: [hermes-agent, writing-plans, novel-to-short-drama-adaptation, short-drama-production-index]
 ---
 
-# Hermes Agent 短剧编剧团队 v2.5
+# Hermes Agent 短剧编剧团队 v2.7
 
 > 短剧编剧全流程系统：从小说/Idea到剧本、分镜、AI生图Prompt。
 > **v2.0 新增**：视觉资产清单 + Prompt 强制注入 + 审核员一致性检查。
@@ -18,6 +18,58 @@ metadata:
 > **v2.3 新增**：三文件架构 — `characters.md` + `scene_prop_data.json` + `manifest.md`。
 > **v2.4 🔥 重大变更**：**严格按集串行生成**，新增 `continuity.md` 连续性追踪 + 伏笔回收管理 + 跨集交接协议。
 > **v2.5 🔥 缺陷修复**：输入处理标准化（小说/PDF/Idea）+ 上下文截断策略 + 读者反馈模拟（三虚拟读者）+ 质量回退链 + 视觉资产变更检测 + 串行/并行明确划分 + 时间预算管理 + 文件依赖关系图。
+> **v2.6 🔥 生产验证**：批量委托策略（主Agent逐集精修）+ 审核不可跳过 + 子Agent中断恢复。
+> **v2.7 🔥 编剧学习系统**：剧本版本对比→分析修改逻辑→提炼风格规则→更新Prompt。编剧修订不仅是更新文件，更是优化AI编剧行为的闭环学习机制。
+
+## 子 Agent 委托策略（v2.6 ⭐ 2026-05-12 Lady Audley's Secret 验证）
+
+> **核心缺陷修复**：一次性委托 24+ 集给子 Agent 导致 token 耗尽/中断/跳过审核。
+
+### 失败模式（Lady Audley's Secret 实测）
+
+| 方案 | 结果 | 根因 |
+|------|------|------|
+| 一次委托 EP-06→30（24集） | EP-06 Prompts 就断 | 输入 152K tokens，输出预算只剩 ~6K，跑不完 |
+| 一次委托 EP-07+08（2集） | 读了文件就断 | 上下文文件过多（6个文件 30K+），输出预算不够 |
+| **主 Agent 自己逐集跑（推荐）** | ✅ EP-07 完整通过 | 主 Agent 已在上下文中，无需额外加载文件，输出空间充足 |
+
+### 推荐策略
+
+| 场景 | 策略 | 理由 |
+|------|------|------|
+| **单集精修**（推荐 ⭐） | 主 Agent 自己执行 | 上下文已加载，输出空间大，审核可控 |
+| **补遗/补文件** | 子 Agent 委托（1集） | 如补 EP-06 Prompts（其他集已存在） |
+| **读者评审** | 子 Agent 委托（1次/3-5集） | 独立视角，不影响主流程 |
+| **批量初稿** | 子 Agent 可试（最多3集） | 接受质量较低，后续逐集精修 |
+
+### 子 Agent 委托时上下文压缩
+
+如果必须用子 Agent，压缩上下文：
+```
+# 坏（30K+ tokens）
+- 读 outline.md 全文
+- 读 characters.md 全文
+- 读 manifest.md 全文
+- 读 scene_prop_data.json 全文
+- 读 script/EP-06.md 全文
+- 读 storyboard/EP-06.md 全文
+- 读 continuity.md 全文
+
+# 好（~5K tokens）
+- 读 continuity.md（核心，含进度+伏笔+角色状态）
+- 读 outline.md 中对应集梗概（只读相关段落）
+- 读 characters.md 中本集出场角色的 base_prompt（只读相关角色）
+- 读 manifest.md 中的色调规则（当前集所在幕）
+```
+
+### 硬性规则（v2.6 新增）
+
+1. **审核不可跳过** — 每集三件套完成后必须跑 Aligner 审核，≥80分才过。子 Agent 跳过审核 = 重来。质量基线稳定后（3+集通过）可接受1轮快速审核。
+2. **每集输出预算** — 一集完整三件套 + 审核 ≈ 15-17K tokens 输出（含 continuity 更新）。子 Agent 总输出预算通常 20-30K，最多跑 1-2 集。
+3. **主 Agent 逐集是默认方案** — 除非有明确理由（并行读者评审、补遗），否则主 Agent 自己跑质量更高。实测 20+集无问题。
+4. **中断恢复** — 子 Agent 中断后，用 `ls script/ storyboard/ prompts/` + `stat` 时间戳确认实际完成到哪，不要假设。
+5. **连续性文件批量更新** — continuity.md 不必每集更新，每 3-5 集批量更新一次即可。EP-20+ 后只保留活跃伏笔（已回收的压缩为一句话），避免上下文膨胀。
+6. **Review 可内联** — 审核结果可内联到 Script 文件末尾（不单独写 review 文件），节省 1 个 write_file 调用。
 
 ## 核心问题
 
@@ -1096,14 +1148,162 @@ a vampire woman looking in terror...
 
 > 💡 **导演修订剧本的更新路径**（2026-04-30 Carmilla 项目验证）：
 > 当用户发送导演优化后的新剧本，更新已有项目：
-> 1. 读取新剧本（PDF → pymupdf 提取文本 → 保存 .txt）
+> 1. 读取新剧本（PDF → pymupdf 提取文本 → 保存 .txt，或 DOCX → python-docx 解析）
 > 2. 按 `EPISODE \d+:` 切分 → 提取每集标题/场景/对白
-> 3. **对比新旧**：集名变化？对白变化？新增角色？
+> 3. **对比新旧**：集名变化？对白变化？新增角色？集数增减？
 > 4. 更新 INDEX.md（集名映射）
-> 5. 批量更新 script/EP-XX.md（用 JSON 翻译字典避免 Python 引号问题）
-> 6. 更新 characters.md（如有新角色如 Adrian）
+> 5. 批量更新 script/EP-XX.md
+> 6. 更新 characters.md（如有新角色）
 > 7. 更新 MASTER.md（如三幕结构变化）
+> 8. 更新 generate_index.py（episode range + 解析器兼容新格式）
+> 9. 运行 generate_index.py + build_html.py 重新生成工作台
 > **⚠️ 先做 Demo（1-2集）确认风格再批量处理全部**
+>
+> 💡 **剧本版本对比与质量审计**（2026-05-13 Carmilla AZ Edit 验证 ⭐ 新增）：
+> 当编剧/导演发来修订版剧本，除了更新文件外，**必须做版本对比分析 + 质量审计**：
+>
+> **Step 1: 版本对比**（用 Python 自动化）
+> ```python
+> # 读取两版，按集切分
+> v1_eps = re.split(r'(?=EPISODE \d+:)', v1_text)
+> v2_eps = re.split(r'(?=EPISODE \d+:)', v2_text)
+> # 逐集对比：标题、字符数、行数、对白数
+> for v1_ep, v2_ep in zip(v1_eps, v2_eps):
+>     print(f"EP-XX: V1={len(v1_ep)} chars, V2={len(v2_ep)} chars (delta={len(v2_ep)-len(v1_ep):+d})")
+> ```
+>
+> **Step 2: 质量审计清单**（必查 5 项）：
+> | 检查项 | 方法 | 发现案例 |
+> |--------|------|---------|
+> | **角色名错误** | 扫描 `(CONT'D)` 前的角色名是否与本集实际出场一致 | EP-13 出现 `FATHER (CONT'D)` 但本集无 FATHER |
+> | **过度删减** | 单集 Δ > -20% 标记为"过短" | EP-14 仅 881 字（原 1121），EP-15 -25.5% |
+> | **结尾缺失** | 检查 V2 末尾是否有 `FADE OUT` / `THE END` | AZ Edit 版结尾只有页码 `50.`，无标准结尾 |
+> | **Epilogue 独立** | V1 结尾嵌在 EP-32 vs V2 独立 EPILOGUE 章节 | ✅ AZ Edit 已拆分，结构改进 |
+> | **修订说明残留** | V1 末尾是否有 "Revised deficiencies" 等说明 | AZ Edit 已删除，干净 |
+>
+> **Step 3: 分析编剧修改逻辑**（提炼写入 Prompt 更新）：
+> - 句式简化方向（长句→短句，心理描写→动作描述）
+> - 格式标准化（CONT'D 使用、页码编号）
+> - 语言风格变化（古典腔调→口语化）
+> - 节奏调整（删减幅度最大的集 = 编剧认为冗余的段落）
+>
+> **Step 4: 提意见**（发现不理想的修改要指出）：
+> - 关键情感场景过度简化（EP-14 坦白戏、EP-06 两面性对比）
+> - 高潮戏压缩（EP-32 最终战从 5831→3107 字，-46.7%）
+> - 角色独特性丢失（V1 的 "I trust her not" → V2 "I don't trust her"，哥特腔调变口语）
+>
+> **Step 5: 学习编剧修改逻辑并更新 Prompt**（⭐ v2.7 新增）：
+>
+> 编剧的修订不仅是"更新文件"，更是"优化 AI 编剧行为"的机会。每次收到修订版时，都应该：
+>
+> **学习方向 1：句式风格（Show, Don't Tell）**
+> - V1 长复合句 → V2 短动作句是常见模式
+> - 例：*"her eyes full of tenderness—nothing like the creature of the night"* → *"her eyes soften"*
+> - **更新编剧 Prompt**：加入"短动作驱动"指令：*每个动作不超过2个分句，用独立短句替代复杂从句*
+> - **警告**：关键转折点（坦白、最终选择）需要保留足够情感厚度，不能全部简化
+>
+> **学习方向 2：对话风格一致性**
+> - 古典腔调 vs 口语化取决于项目风格
+> - 例：*"I trust her not"* (哥特古典) vs *"I don't trust her"* (现代口语)
+> - **更新编剧 Prompt**：如果项目是哥特/奇幻，保留 *"archaic phrasing for authority figures"*；如果是现代题材，允许口语化
+>
+> **学习方向 3：格式标准化**
+> - V1 无 CONT'D → V2 68 处 CONT'D（标准剧本格式）
+> - V1 无 FADE OUT/THE END → 需要检查 V2 是否补上
+> - **更新编剧 Prompt**：强制要求标准好莱坞剧本格式（见下方格式检查清单）
+>
+> **学习方向 4：节奏感知（从删减幅度反向推导）**
+> - 删减最多的集 = 编剧认为"信息冗余、节奏拖沓"
+> - EP-05 (-15%)、EP-06 (-19%)、EP-15 (-25.5%)、EP-32 (-46.7%)
+> - **更新编剧 Prompt**：加入"节奏紧凑度"指令：*每集信息密度优先，减少重复描述*
+>
+> **编剧 Prompt 更新模板**（每次修订后更新）：
+> ```
+> ## 编剧风格指南（vX.X, 更新于 YYYY-MM-DD）
+>
+> **句式规则**（基于编剧修订版本 vN 分析）：
+> - 动作描述：短句优先，每句 ≤ 2 个分句
+> - 心理描写：用动作/表情替代内心独白
+> - 例外：情感转折点保留 1-2 句长描写作锚点
+>
+> **对话风格**：
+> - [项目风格，如：哥特古典 / 现代口语 / 混合]
+> - 权威角色用古语结构（"I trust her not"）
+> - 日常角色用自然口语（"I don't trust her"）
+>
+> **格式要求**：
+> - 连续对话必须用 (CONT'D)
+> - 集末必须有 FADE TO BLACK 或 FADE OUT
+> - 全剧结尾必须有 FADE OUT + THE END
+> - 页码不写入剧本（AI 生成不需要）
+>
+> **节奏规则**（基于删减幅度分析）：
+> - 每集信息量 > 情感铺垫量
+> - 开场 3 秒直接进入冲突，不接受空镜/铺垫
+> - 角色首次出场的视觉描述只写一次（后续用动作替代）
+> ```
+>
+> **版本审计后必须更新的文件**：
+> 1. `TASK.md` — 记录"修订版本 vX 分析完成"
+> 2. `characters.md` — 如角色对话风格有变化，更新"说话风格"字段
+> 3. `manifest.md` — 如视觉风格有变化，更新色调/光影规则
+> 4. 编剧 Prompt（本技能 SKILL.md）— 更新"编剧风格指南"章节
+> 5. `continuity.md` — 如新增/删除了角色或情节线，更新追踪表
+>
+> **编剧风格指南持久化**（⭐ v2.7 新增）：
+> - 每次分析后，把学到的风格规则写入 `TASK.md` 的 `## Style Guide` 章节
+> - 格式：`[YYYY-MM-DD] 编剧 vX 修订 → 短句驱动 + 格式标准化 + 古典腔调保留`
+> - 下一次编剧生成时，从 `TASK.md` 读取风格指南注入 prompt
+
+> 💡 **PDF/DOCX 剧本解析路径**（2026-05-13 Carmilla 32集验证 ⭐ 新增）：
+> **PDF** → 用 `pymupdf`（fitz），非 `pdftotext`（sandbox 中通常未安装）：
+> ```python
+> import fitz
+> doc = fitz.open('script.pdf')
+> text = ''.join(page.get_text() for page in doc)
+> # 注意：PDF 提取的文本可能含页码（如 "47." 独占一行），需清理
+> ```
+> **DOCX** → 用 `python-docx`：
+> ```python
+> from docx import Document
+> doc = Document('script.docx')
+> all_paras = [(i, p.text.strip()) for i, p in enumerate(doc.paragraphs) if p.text.strip()]
+> # 按 EPISODE 标记切分
+> ep_markers = [(num, title, para_idx) for num, title, para_idx in ...]
+> ```
+>
+> **Step 2: 好莱坞剧本解析**（无引号格式 — 角色名一行，对白下一行）
+> ```
+> LAURA (V.O.)
+> Seven days. That's all I have left.
+>
+> CARMILLA
+> (soft, predatory)
+> I told you. Fifteen years.
+> ```
+> - 角色名：全大写，可能含 `(V.O.)` / `(whispering)` 等 parenthetical
+> - 对白在角色名下一行（无引号！）
+> - parenthetical 行格式：`^\(.*\)$`，需跳过取真正对白
+>
+> **Step 3: 写入 script/EP-XX.md**（保留 Source Screenplay 代码块 + 提取 Key Dialogue 表格）
+>
+> **Step 4: 修复 generate_index.py**（常见 3 个问题）：
+> 1. **硬编码集数范围** — `for ep_num in range(1, 31)` → 改为 `range(1, N+1)` 或扫描目录
+> 2. **缺少文件崩溃** — storyboard/prompts 不存在时 FileNotFoundError → 加 `os.path.exists()` 守卫
+> 3. **对白格式不兼容** — 新格式 `| Speaker | EN |` vs 旧格式 `| EN | CN |` → 按表头检测
+>
+> **Step 5: 生成工作台**
+> ```bash
+> python3 generate_index.py  # → project_data.json
+> python3 build_html.py       # → index.html
+> ```
+>
+> **解析器修复清单（必做）**：
+> - `generate_index.py` 的 `main()` 循环：`range(1, 31)` → `range(1, 33)`（或动态）
+> - 每个 read() 调用前加 `os.path.exists()` 检查，不存在返回空结构
+> - `parse_script()` 支持 `## Source Screenplay` 代码块格式（`meta['screenplay']`）
+> - `parse_script()` 的 Key Dialogue 按表头列名自动检测新旧格式
+> - `Cliffhanger` 正则用 `(?=\n## |\Z)` 而非 `(?=$)`
 
 > 💡 **逐集精修模式**（2026-04-30 Carmilla 项目验证）：
 > 当用户要求"一集一集精修"时，放弃批量脚本，逐集手工精修：
@@ -1326,6 +1526,10 @@ result = delegate_task(
 - 爽点分布合理
 - 人物动机清晰
 - 伏笔埋设与回收完整
+- **短句驱动（v2.7 ⭐）** — 每个动作描述 ≤ 2 个分句，用独立短句替代复杂从句（*"her eyes soften"* > *"her eyes full of tenderness—nothing like the creature of the night"*）
+- **情感锚点例外（v2.7 ⭐）** — 关键转折点（坦白、最终选择、生死瞬间）保留 1-2 句长描写作情感厚度
+- **格式标准（v2.7 ⭐）** — 连续对话必须用 (CONT'D)，集末 FADE TO BLACK/OUT，全剧 FADE OUT + THE END
+- **对话风格一致性（v2.7 ⭐）** — 根据项目风格（哥特古典/现代口语）设定，不混用
 
 ## 审核通过关键要素（经验总结）
 
@@ -1994,19 +2198,47 @@ Drama Studio (12 阶段): 输入处理 → 编剧层(7) → 制作层(4) → 交
 ```
 server/
   index.ts              # Express + WebSocket (端口 3000)
+                        # .env 加载: process.loadEnvFile() (Node 22 原生)
   ws.ts                 # wsBroadcast() 实时推送
   prompts.ts            # 各阶段 System Prompt（从 drama-team 技能提取）
   ai.ts                 # callAI() — vLLM OpenAI API (qwen27b-awq)
   services/
     pipeline.ts         # Pipeline orchestrator: runPhase(), alignerLoop()
+    mcp.ts              # 🔥 MCP Client (Streamable HTTP, v2026-05-11)
+                        #   Session 管理 + JSON-RPC 调用 + 异步轮询队列
+                        #   seedanceGenerateVideo / getTaskById
+    mcp-parser.ts       # 🔥 镜头/文本解析器
+                        #   parseVideoShots() / tryParseJson() / cleanText()
+    video_gen.ts        # 视频生成 (MCP seedanceGenerateVideo → 占位降级)
+    image_gen.ts        # 生图 (预留后续 MCP 生图)
+    assembly.ts         # FFmpeg 合成
   routes/
     project.ts          # CRUD: /api/projects
     phase.ts            # 执行: /api/phases/:id/run, /cancel, /order
-  store/
-    store.ts            # 内存 Map + JSON 持久化
+  .env                  # 🔥 MCP_URL / MCP_AUTH_TOKEN / LLM 配置
 shared/
   types.ts              # ProjectData, PhaseStatus, PhaseName
 ```
+
+**🔥 MCP 集成 (v2026-05-11)**
+
+视频生成已从 CLI 调用迁移至 MCP 接口。核心模块：
+
+| 文件 | 职责 |
+|------|------|
+| `server/services/mcp.ts` | MCP 客户端：Session 管理、JSON-RPC 调用、异步任务轮询（并发 3 个 shot） |
+| `server/services/mcp-parser.ts` | 解析器：`parseVideoShots()` 从 prompt 提取镜头、JSON 提取、文本清洗 |
+| `server/services/video_gen.ts` | 视频服务：MCP 优先 → FFmpeg 占位降级 |
+| `server/.env` | 配置：`MCP_URL` + `MCP_AUTH_TOKEN`，测试服/正式服一键切换 |
+
+**MCP 服务器信息：**
+- 测试服：`https://kkshort-adsmanager-dev.mikktv.xyz/adsmanager/mcp`
+- 协议：MCP 2025-03-26 (Streamable HTTP)，需 `Mcp-Session-Id` 维持会话
+- 工具：`seedanceGenerateVideo`（异步视频生成，全字段 required）+ `getTaskById`（轮询）
+- 生图工具：待后续上线，架构已预留
+
+**API 端点：**
+- `GET /api/mcp/status` — 连通性检查，返回 `{configured, connected, tools: [...]}`
 
 ### 关键技术决策
 
@@ -2204,10 +2436,58 @@ git add -A && git commit -m "feat: ..."
 git push origin main
 ```
 
-**常见陷阱：**
+### 常见陷阱
 - `git push` 被拒（remote 有新提交）→ `git pull --rebase origin main` 再 push
 - rebase 可能导致本地独有文件丢失（如 `templates/fix_prompts_template.py` 曾丢失）→ 推送后检查文件完整性
 - 本地 skill 文件 vs GitHub 仓库文件可能不同步 → 用 `git log --oneline` 对比确认
+
+### vLLM 本地模型调用陷阱（⭐ 2026-05-13 验证）
+
+> **问题**：Qwen3.6-27B-AWQ（带思考模式）通过 vLLM 调用时，返回 `reasoning` 字段而非 `content`，导致 `message.content` 为 `None`。
+
+**根因**：模型的 reasoning 部分消耗了 max_tokens 预算，导致实际输出部分被截断或为空。
+
+**修复方案**：
+1. **max_tokens 必须足够大** — 至少 8192（含 reasoning 开销），而非 4096
+2. **空值检查** — 调用后检查 `resp.choices[0].message.content` 是否为 `None`
+3. **降级策略** — content 为 None 时重试或返回空
+
+```python
+# ❌ 错误：max_tokens 太小
+resp = client.chat.completions.create(
+    model="qwen27b-awq",
+    messages=[...],
+    max_tokens=4096  # reasoning 耗尽，content 为 None
+)
+return resp.choices[0].message.content  # TypeError: write() argument must be str, not None
+
+# ✅ 正确：足够大的 max_tokens + None 检查
+resp = client.chat.completions.create(
+    model="qwen27b-awq",
+    messages=[...],
+    max_tokens=8192  # 给 reasoning 留足空间
+)
+content = resp.choices[0].message.content
+if content is None:
+    # 重试或返回空
+    return ""
+return content
+```
+
+**诊断命令**：
+```bash
+# 检查模型是否返回 reasoning
+curl -s http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"qwen27b-awq","messages":[{"role":"user","content":"hello"}],"max_tokens":20}' \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); m=d['choices'][0]['message']; print(f'content: {m.get(\"content\")}'); print(f'reasoning: {m.get(\"reasoning\")}')"
+```
+
+**批量生成分镜/Prompts 脚本模板**：
+- 用 `openai` Python 库调用 vLLM（`base_url=http://localhost:8000/v1`）
+- 好莱坞剧本解析：角色名全大写一行，对白下一行（无引号），parenthetical 行 `^\(.*\)$` 需跳过
+- 脚本存为 `episodes_src/EP-NN.txt`（按 `EPISODE \d+:` 切分）
+- 后台运行 + `notify_on_complete=true` 用于长时间任务（5-32集 × 每集约 2-5 分钟）
 
 ## 相关技能
 
