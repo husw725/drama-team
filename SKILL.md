@@ -1,7 +1,7 @@
 ---
 name: hermes-short-drama-team
 description: 短剧编剧全流程系统 — 严格按集串行生成，含剧集连续性追踪、伏笔管理、视觉一致性管控与独立审核机制
-version: 2.8.0
+version: 2.9.0
 author: Hermes Agent + User
 license: MIT
 metadata:
@@ -10,16 +10,10 @@ metadata:
     related_skills: [hermes-agent, writing-plans, novel-to-short-drama-adaptation, short-drama-production-index]
 ---
 
-# Hermes Agent 短剧编剧团队 v2.7
+# Hermes Agent 短剧编剧团队 v2.9
 
 > 短剧编剧全流程系统：从小说/Idea到剧本、分镜、AI生图Prompt。
-> **v2.0 新增**：视觉资产清单 + Prompt 强制注入 + 审核员一致性检查。
-> **v2.2 新增**：场景/道具 Reference 体系 — `[ref: S-XX]` 标记。
-> **v2.3 新增**：三文件架构 — `characters.md` + `scene_prop_data.json` + `manifest.md`。
-> **v2.4 🔥 重大变更**：**严格按集串行生成**，新增 `continuity.md` 连续性追踪 + 伏笔回收管理 + 跨集交接协议。
-> **v2.5 🔥 缺陷修复**：输入处理标准化（小说/PDF/Idea）+ 上下文截断策略 + 读者反馈模拟（三虚拟读者）+ 质量回退链 + 视觉资产变更检测 + 串行/并行明确划分 + 时间预算管理 + 文件依赖关系图。
-> **v2.6 🔥 生产验证**：批量委托策略（主Agent逐集精修）+ 审核不可跳过 + 子Agent中断恢复。
-> **v2.7 🔥 编剧学习系统**：剧本版本对比→分析修改逻辑→提炼风格规则→更新Prompt。编剧修订不仅是更新文件，更是优化AI编剧行为的闭环学习机制。
+> **v2.9**: 对齐系统 v5.1（跨集节奏/文化敏感/AI制作可行性检查）+ 读者市场自适应 + 清理冗余历史内容。
 
 ## 子 Agent 委托策略（v2.6 ⭐ 2026-05-12 Lady Audley's Secret 验证）
 
@@ -267,6 +261,27 @@ Laura对着空房间说："你到底是谁？"
 | 父亲 | 发现女儿异常，开始怀疑 | EP-03 |
 | 老仆人 | 行为可疑，暗中观察Laura | EP-02 |
 
+## 角色互动记录 (v5.1 ⭐ 新增)
+
+| 集数 | 互动角色 | 互动类型 | 情感基调 |
+|------|---------|---------|---------|
+| EP-01 | Laura × Carmilla | 初遇+吸血 | 恐惧 |
+| EP-02 | Laura × Carmilla | 触摸+威胁 | 危险暧昧 |
+| ... | ... | ... | ... |
+
+> 用途：Aligner 检查"原谅/和解是否有前置互动铺垫"时参考
+
+## 感官刺激记录 (v5.1 ⭐ 新增)
+
+| 集数 | 视觉动作 | 物理亲密 | 超自然现象 | 危险场景 | 感官得分(0-4) |
+|------|---------|---------|-----------|---------|--------------|
+| EP-01 | ✅紫纹特写 | ❌ | ✅Carmilla化雾 | ✅7天倒计时 | 3 |
+| EP-02 | ❌ | ✅摸下颌线 | ❌ | ✅被困 | 2 |
+| EP-03 | ❌ | ❌ | ❌ | ❌ | 0 ⚠️ |
+| ... | ... | ... | ... | ... | ... |
+
+> 用途：Aligner 检查"连续低密度集"和"单集感官刺激"时参考
+
 ---
 
 ## 冲突模式记录 (Conflict Pattern Log)
@@ -364,17 +379,18 @@ Laura对着空房间说："你到底是谁？"
 **调用方式：**
 
 ```python
-# 每完成 3-5 集后调用一次
+# 每完成 3-5 集后调用一次，人设按目标市场自适应
 from hermes_tools import delegate_task
 
+# 根据项目目标市场选择人设（见上方"市场自适应读者映射"表）
 review_result = delegate_task(
     goal="以虚拟读者视角评审 EP-01 到 EP-05",
     context=f"""
-    你是三位虚拟读者的集合体：
+    你是三位虚拟读者（{target_market}市场）的集合体：
     
-    1. 急躁哥 — 刷短视频用户，3秒没爽点就划走
-    2. 逻辑控 — 剧情党，发现漏洞就弃剧
-    3. 情感党 — 为角色上头，意难平会取关
+    1. 急躁哥 — {market_persona_1}
+    2. 逻辑控 — {market_persona_2}
+    3. 视听专家 — {market_persona_3}
     
     请分别以三个视角评审以下剧本：
     {script_content}
@@ -388,9 +404,10 @@ review_result = delegate_task(
     - 漏洞1: ...
     - 建议：...
     
-    ## 情感党
-    - 最上头的场景: ...
-    - 意难平: ...
+    ## 视听专家
+    - 预算可行性: ...
+    - 竞品对标: ...
+    - AI制作风险: ...
     - 建议：...
     """,
     toolsets=['file']
@@ -1169,304 +1186,17 @@ a vampire woman looking in terror...
 > 9. 运行 generate_index.py + build_html.py 重新生成工作台
 > **⚠️ 先做 Demo（1-2集）确认风格再批量处理全部**
 >
-> 💡 **剧本版本对比与质量审计**（2026-05-13 Carmilla AZ Edit 验证 ⭐ 新增）：
-> 当编剧/导演发来修订版剧本，除了更新文件外，**必须做版本对比分析 + 质量审计**：
+> 💡 **剧本修订闭环流程**（v2.7+）：当收到编剧修订版时：
+> 1. **版本对比**：按集切分两版，对比标题/字符数/行数/对白数
+> 2. **质量审计**（5项必查）：角色名错误、过度删减(Δ>-20%)、结尾缺失(FADE OUT)、Epilogue独立、修订说明残留
+> 3. **学习编剧修改逻辑**：句式简化方向(长→短)、对话风格一致性(古典vs口语)、格式标准化(CONT'D/FADE OUT)、节奏感知(从删减幅度反向推导)
+> 4. **更新Prompt**：将学到的风格规则写入 TASK.md 的 Style Guide 章节
+> 5. **提意见**：发现不理想修改要指出（关键情感过度简化、高潮戏压缩、角色独特性丢失）
 >
-> **Step 1: 版本对比**（用 Python 自动化）
-> ```python
-> # 读取两版，按集切分
-> v1_eps = re.split(r'(?=EPISODE \d+:)', v1_text)
-> v2_eps = re.split(r'(?=EPISODE \d+:)', v2_text)
-> # 逐集对比：标题、字符数、行数、对白数
-> for v1_ep, v2_ep in zip(v1_eps, v2_eps):
->     print(f"EP-XX: V1={len(v1_ep)} chars, V2={len(v2_ep)} chars (delta={len(v2_ep)-len(v1_ep):+d})")
-> ```
+> 💡 **PDF/DOCX 解析**：PDF → `pymupdf`(fitz)，DOCX → `python-docx`。好莱坞格式无引号（角色名一行，对白下一行），parenthetical 行格式 `^\(.*\)$` 需跳过。
 >
-> **Step 2: 质量审计清单**（必查 5 项）：
-> | 检查项 | 方法 | 发现案例 |
-> |--------|------|---------|
-> | **角色名错误** | 扫描 `(CONT'D)` 前的角色名是否与本集实际出场一致 | EP-13 出现 `FATHER (CONT'D)` 但本集无 FATHER |
-> | **过度删减** | 单集 Δ > -20% 标记为"过短" | EP-14 仅 881 字（原 1121），EP-15 -25.5% |
-> | **结尾缺失** | 检查 V2 末尾是否有 `FADE OUT` / `THE END` | AZ Edit 版结尾只有页码 `50.`，无标准结尾 |
-> | **Epilogue 独立** | V1 结尾嵌在 EP-32 vs V2 独立 EPILOGUE 章节 | ✅ AZ Edit 已拆分，结构改进 |
-> | **修订说明残留** | V1 末尾是否有 "Revised deficiencies" 等说明 | AZ Edit 已删除，干净 |
->
-> **Step 3: 分析编剧修改逻辑**（提炼写入 Prompt 更新）：
-> - 句式简化方向（长句→短句，心理描写→动作描述）
-> - 格式标准化（CONT'D 使用、页码编号）
-> - 语言风格变化（古典腔调→口语化）
-> - 节奏调整（删减幅度最大的集 = 编剧认为冗余的段落）
->
-> **Step 4: 提意见**（发现不理想的修改要指出）：
-> - 关键情感场景过度简化（EP-14 坦白戏、EP-06 两面性对比）
-> - 高潮戏压缩（EP-32 最终战从 5831→3107 字，-46.7%）
-> - 角色独特性丢失（V1 的 "I trust her not" → V2 "I don't trust her"，哥特腔调变口语）
->
-> **Step 5: 学习编剧修改逻辑并更新 Prompt**（⭐ v2.7 新增）：
->
-> 编剧的修订不仅是"更新文件"，更是"优化 AI 编剧行为"的机会。每次收到修订版时，都应该：
->
-> **学习方向 1：句式风格（Show, Don't Tell）**
-> - V1 长复合句 → V2 短动作句是常见模式
-> - 例：*"her eyes full of tenderness—nothing like the creature of the night"* → *"her eyes soften"*
-> - **更新编剧 Prompt**：加入"短动作驱动"指令：*每个动作不超过2个分句，用独立短句替代复杂从句*
-> - **警告**：关键转折点（坦白、最终选择）需要保留足够情感厚度，不能全部简化
->
-> **学习方向 2：对话风格一致性**
-> - 古典腔调 vs 口语化取决于项目风格
-> - 例：*"I trust her not"* (哥特古典) vs *"I don't trust her"* (现代口语)
-> - **更新编剧 Prompt**：如果项目是哥特/奇幻，保留 *"archaic phrasing for authority figures"*；如果是现代题材，允许口语化
->
-> **学习方向 3：格式标准化**
-> - V1 无 CONT'D → V2 68 处 CONT'D（标准剧本格式）
-> - V1 无 FADE OUT/THE END → 需要检查 V2 是否补上
-> - **更新编剧 Prompt**：强制要求标准好莱坞剧本格式（见下方格式检查清单）
->
-> **学习方向 4：节奏感知（从删减幅度反向推导）**
-> - 删减最多的集 = 编剧认为"信息冗余、节奏拖沓"
-> - EP-05 (-15%)、EP-06 (-19%)、EP-15 (-25.5%)、EP-32 (-46.7%)
-> - **更新编剧 Prompt**：加入"节奏紧凑度"指令：*每集信息密度优先，减少重复描述*
->
-> **编剧 Prompt 更新模板**（每次修订后更新）：
-> ```
-> ## 编剧风格指南（vX.X, 更新于 YYYY-MM-DD）
->
-> **句式规则**（基于编剧修订版本 vN 分析）：
-> - 动作描述：短句优先，每句 ≤ 2 个分句
-> - 心理描写：用动作/表情替代内心独白
-> - 例外：情感转折点保留 1-2 句长描写作锚点
->
-> **对话风格**：
-> - [项目风格，如：哥特古典 / 现代口语 / 混合]
-> - 权威角色用古语结构（"I trust her not"）
-> - 日常角色用自然口语（"I don't trust her"）
->
-> **格式要求**：
-> - 连续对话必须用 (CONT'D)
-> - 集末必须有 FADE TO BLACK 或 FADE OUT
-> - 全剧结尾必须有 FADE OUT + THE END
-> - 页码不写入剧本（AI 生成不需要）
->
-> **节奏规则**（基于删减幅度分析）：
-> - 每集信息量 > 情感铺垫量
-> - 开场 3 秒直接进入冲突，不接受空镜/铺垫
-> - 角色首次出场的视觉描述只写一次（后续用动作替代）
-> ```
->
-> **版本审计后必须更新的文件**：
-> 1. `TASK.md` — 记录"修订版本 vX 分析完成"
-> 2. `characters.md` — 如角色对话风格有变化，更新"说话风格"字段
-> 3. `manifest.md` — 如视觉风格有变化，更新色调/光影规则
-> 4. 编剧 Prompt（本技能 SKILL.md）— 更新"编剧风格指南"章节
-> 5. `continuity.md` — 如新增/删除了角色或情节线，更新追踪表
->
-> **编剧风格指南持久化**（⭐ v2.7 新增）：
-> - 每次分析后，把学到的风格规则写入 `TASK.md` 的 `## Style Guide` 章节
-> - 格式：`[YYYY-MM-DD] 编剧 vX 修订 → 短句驱动 + 格式标准化 + 古典腔调保留`
-> - 下一次编剧生成时，从 `TASK.md` 读取风格指南注入 prompt
-
-> 💡 **PDF/DOCX 剧本解析路径**（2026-05-13 Carmilla 32集验证 ⭐ 新增）：
-> **PDF** → 用 `pymupdf`（fitz），非 `pdftotext`（sandbox 中通常未安装）：
-> ```python
-> import fitz
-> doc = fitz.open('script.pdf')
-> text = ''.join(page.get_text() for page in doc)
-> # 注意：PDF 提取的文本可能含页码（如 "47." 独占一行），需清理
-> ```
-> **DOCX** → 用 `python-docx`：
-> ```python
-> from docx import Document
-> doc = Document('script.docx')
-> all_paras = [(i, p.text.strip()) for i, p in enumerate(doc.paragraphs) if p.text.strip()]
-> # 按 EPISODE 标记切分
-> ep_markers = [(num, title, para_idx) for num, title, para_idx in ...]
-> ```
->
-> **Step 2: 好莱坞剧本解析**（无引号格式 — 角色名一行，对白下一行）
-> ```
-> LAURA (V.O.)
-> Seven days. That's all I have left.
->
-> CARMILLA
-> (soft, predatory)
-> I told you. Fifteen years.
-> ```
-> - 角色名：全大写，可能含 `(V.O.)` / `(whispering)` 等 parenthetical
-> - 对白在角色名下一行（无引号！）
-> - parenthetical 行格式：`^\(.*\)$`，需跳过取真正对白
->
-> **Step 3: 写入 script/EP-XX.md**（保留 Source Screenplay 代码块 + 提取 Key Dialogue 表格）
->
-> **Step 4: 修复 generate_index.py**（常见 3 个问题）：
-> 1. **硬编码集数范围** — `for ep_num in range(1, 31)` → 改为 `range(1, N+1)` 或扫描目录
-> 2. **缺少文件崩溃** — storyboard/prompts 不存在时 FileNotFoundError → 加 `os.path.exists()` 守卫
-> 3. **对白格式不兼容** — 新格式 `| Speaker | EN |` vs 旧格式 `| EN | CN |` → 按表头检测
->
-> **Step 5: 生成工作台**
-> ```bash
-> python3 generate_index.py  # → project_data.json
-> python3 build_html.py       # → index.html
-> ```
->
-> **解析器修复清单（必做）**：
-> - `generate_index.py` 的 `main()` 循环：`range(1, 31)` → `range(1, 33)`（或动态）
-> - 每个 read() 调用前加 `os.path.exists()` 检查，不存在返回空结构
-> - `parse_script()` 支持 `## Source Screenplay` 代码块格式（`meta['screenplay']`）
-> - `parse_script()` 的 Key Dialogue 按表头列名自动检测新旧格式
-> - `Cliffhanger` 正则用 `(?=\n## |\Z)` 而非 `(?=$)`
-
-> 💡 **逐集精修模式**（2026-04-30 Carmilla 项目验证）：
-> 当用户要求"一集一集精修"时，放弃批量脚本，逐集手工精修：
->
-> **精修流程（每集独立）：**
-> 1. 从 `screenplay_hollywood.txt` 提取单集原文（按 `EPISODE \d+:` 切分）
-> 2. 逐行阅读好莱坞格式剧本，理解每个动作/对白/转场
-> 3. 按影视节奏分配时间轴（不按固定3秒切分，而是按台词长度+动作复杂度动态分配）
-> 4. 写 Scene Breakdown 表格，每行对应一个镜头
-> 5. 写入 `script/EP-XX.md`
->
-> **精修格式规范：**
->
-> **动作描述（中英双语 ⭐ 关键要求）**：
-> ```
-> 先中文描述（自然语序）/ 后英文原文（好莱坞格式）
-> 例：极特写——咬痕破皮，血珠沿苍白脖颈滑落 / EXTREME CLOSE UP – Two fresh bite marks break the skin. A single drop of blood slides down her pale throat.
-> ```
-> 中文在前，用 `/` 分隔，英文在后保留原文。这样既便于中文团队理解，又保留英文原文供AI生图使用。
->
-> **场景标签格式**：
-> ```
-> S-XX 地点名 [镜头类型]
-> 例：S-01 Laura卧室 极特写
->     S-02 古堡走廊 全景
->     S-03 大厅/走廊
-> ```
-> 镜头类型：极特写 / 特写 / 近景 / 中景 / 全景 / 远景 / 黑屏
->
-> **对白格式**：
-> ```
-> CHARACTER: "EN text" / "中文翻译"
-> 例：LAURA: "What… is this?" / "什么……这是？"
->     CARMILLA (V.O.): "Mine… forever." / "我的……永远。"
-> ```
->
-> **BGM 列（具体音乐描述）**：
-> ```
-> ❌ 通用描述："紧张"、"悲伤"
-> ✅ 具体描述："低频嗡鸣起"、"诡异小提琴起"、"心跳声加速"、"刺耳和弦"、"雾气音效"
-> ```
-> BGM 描述要具体可执行——像给配乐师的工作指示，不是给观众的情绪标签。
->
-> **Cliffhanger（悬念钩子写法）**：
-> 每集结尾写一段 Clifhanger 描述（50-150字），包含：
-> - 本集最大悬念/转折总结
-> - 暗示下一集方向的钩子
-> - 关键未解之谜
-> 例："Carmilla化为雾气消失，Laura颈间的咬痕开始发出紫色光芒——开场钩子：极特写咬痕+血珠，前3秒直接视觉冲击。"
->
-> **时间轴分配原则（不按固定3秒！）**：
-> ```
-> 纯动作镜头：3-5s
-> 对白镜头：4-6s（短句）/ 6-8s（长句）
-> 情感转折/揭示：5-8s
-> 转场/黑屏：2-4s
-> 悬念慢推结尾：最长10s
-> ```
-> 总时长因集而异（80s-155s），不是固定的70s——"最符合剧本"优先。
-
-**好莱坞剧本转换（`convert_screenplay.py`）：**
-
-> **核心原则：编剧和审核员必须完全独立——审核员不知道编剧是谁、不受编剧影响**
-
-### 流程（v2.4 — 串行模式）
-
-> **关键变更**：不再用多子Agent并行生成。主Agent逐集创作，Aligner 只做独立审核。
-
-1. **编剧（主Agent）** 写完 EP-XX 三件套（script/storyboard/prompts）
-2. **派独立审核员**：`delegate_task` 创建子Agent，给它 Aligner v4.0 的完整审核prompt
-3. **审核员输出**：PASS ✅ / FAIL ❌ / ⚠️ 需修改
-4. **如果 FAIL**：编剧根据审核意见重写，重新派审核员
-5. **如果 PASS**：更新 continuity.md → 进入下一集
-6. **如果 FAIL 超过 3 次**：人工介入修改
-
-### 审核范围扩展（v2.4 新增）
-
-Aligner 现在增加跨集连续性检查（5分）：
-
-| 检查项 | 标准 | 扣分 |
-|--------|------|------|
-| 悬念回收 | 是否回收了上一集 Cliffhanger（开篇 3 秒） | -2 |
-| 伏笔处理 | 到期伏笔是否处理（查 continuity.md） | -2 |
-| 角色状态 | 角色行为是否符合当前状态 | -2 |
-| 冲突不重复 | 是否与前 2 集冲突类型不同 | -1 |
-
-### 关键规则
-- 审核员 **不读编剧的自检表** — 只看成品本身
-- 审核员 **不调用编剧的任何文件** — 只读剧本/分镜/Prompts内容
-- 审核员的 context **不包含编剧的意图** — 只看成品质量
-- 审核员 **不能给自己打PASS** — 它只审别人写的
-- **禁止自批**：编剧写完不能自己说"PASS"，必须派独立Agent审
-- 同一集 FAIL 超过 2 次 → 人工介入修改
-
-### delegate_task 调用示例
-
-**编剧调用（v2.4 — 串行模式）：**
-```python
-# 先读取上下文
-continuity = read_file('continuity.md')
-outline = read_file('outline.md')
-prev_script = read_file('script/EP-02.md') if current_ep > 1 else ''
-
-result = delegate_task(
-    goal=f"编写 EP-{ep_num:02d} 剧本",
-    context=f"""
-    你是主编剧，正在编写第 {ep_num} 集剧本。
-    
-    【连续性追踪（必须遵守）】
-    {continuity}
-    
-    【大纲中本集梗概】
-    {outline_section}
-    
-    【上一集结尾（必须回收）】
-    {prev_cliffhanger}
-    
-    【视觉资产清单】
-    {manifest}
-    """,
-    toolsets=['file']
-)
-```
-
-**审核员调用（v2.4 — 含连续性检查）：**
-```python
-continuity = read_file('continuity.md')
-
-result = delegate_task(
-    goal=f"审核 EP-{ep_num:02d} 三件套是否符合 Aligner v4.0 标准",
-    context=f"""
-    你是Script Aligner审核员。
-    审核标准：Aligner v4.0（10项评分 + 跨集连续性5分）
-    
-    剧本内容：[EP-XX 剧本完整内容]
-    分镜内容：[EP-XX 分镜完整内容]
-    Prompts内容：[EP-XX Prompts完整内容]
-    视觉资产清单：[visual_assets/manifest.md 完整内容]
-    
-    【连续性追踪（必须检查）】
-    {continuity}
-    
-    特别检查：
-    1. 是否回收了上一集 Cliffhanger？
-    2. 到期伏笔是否处理？
-    3. 角色状态是否一致？
-    4. 冲突类型是否与前2集不同？
-    """,
-    toolsets=['file']
-)
-```
-
-## 审核员系统 Prompt（Aligner v4.0）
+> 💡 **逐集精修格式**：动作描述中英双语（中文/英文分隔），对白 `CHAR: "EN" / "CN"`，BGM 具体可执行（非情绪标签），Cliffhanger 50-150字含悬念+钩子+未解之谜。时间轴按内容动态分配（非固定3秒），总时长因集而异。
+## 审核员系统 Prompt（Aligner v5.1）
 
 ```
 你是Script Aligner审核员，职责是审核每一集剧本/分镜/Prompts是否符合竖屏短剧标准。
@@ -1567,13 +1297,66 @@ result = delegate_task(
 - 情感场景（告白/坦白）必须包含物理动作（握拳/流泪/后退/拥抱等）
 - **扣分**：全集纯对白 → -5分
 
+### 跨集节奏与平台适配检查（v5.1 ⭐ 新增）— 5分
+> **v2.7 教训**：Carmilla 32 集中 EP-04~12 连续 8 集"死亡区间"（调查/读日记/真相/拒绝 = 零感官刺激），急躁哥刷到 EP-06 必走；逻辑控预估 D1 留存仅 35%（健康线 50%）。
+
+**检查项 F：连续低密度集检测（查 continuity.md 冲突模式表）**
+- 最近 3 集的冲突类型是否一致？（如 3 集都是"信息揭示"无"物理冲突"）
+- 连续 2 集无冲突升级 → ⚠️ 预警；连续 3 集 → FAIL
+- **扣分**：连续 2 集无冲突升级 → -3分
+
+**检查项 G：感官刺激强制检查**
+- 每集至少包含以下之一：视觉动作（追逐/打斗/超自然现象）、物理亲密（触摸/拥抱/咬）、危险场景（倒计时具象化/受伤）
+- 纯"脑力活"集（调查/读日记/推理/聊天）= drop-off 节点，必须至少一个感官锚点
+- **扣分**：本集无任何感官刺激 → -2分
+
+**检查项 H：单集信息密度（≥2 个新信息点）**
+- 每集必须推进至少 2 个新信息点（新角色出场/新规则揭示/关系变化/倒计时推进/伏笔回收/新伏笔埋设）
+- 仅"推进上一集剧情"不算新信息
+- **扣分**：新信息点 < 2 → -2分
+
+### 文化摩擦与平台敏感检查（v5.1 ⭐ 新增）— 5分
+> **v2.7 教训**：Carmilla "纯圣之血"Christian 暗喻过重在 secular EU 引发困惑；Laura 17 岁选择永久身体改变触发 US 平台敏感；"紫纹=诅咒"US 观众第一联想是 hickey（喜剧效果）。
+
+**检查项 I：年龄 + 行为平台敏感组合**
+- 角色年龄（查 characters.md）+ 本集行为是否有平台敏感组合？
+- 红旗：未成年 × 永久身体改变 / 未成年 × 非自愿亲密 / 未成年 × 暴力自残
+- **扣分**：发现敏感组合未做叙事缓冲 → -3分
+
+**检查项 J：宗教/政治隐喻检查**
+- 设定名称是否含宗教/政治特定隐喻？（如"纯圣之血"= Christian saints blood）
+- 目标市场是否有对应文化群体？（secular EU 对 saints 无共鸣）
+- **扣分**：宗教隐喻过重且无目标市场对应 → -2分
+
+**检查项 K：原谅/和解必须有前置互动铺垫**
+- 角色原谅/和解是否有至少 1 集的前置互动铺垫？（查 continuity.md 角色互动记录）
+- Western 观众重视 accountability，unearned forgiveness = 弃剧信号
+- **扣分**：无条件原谅零铺垫 → -2分
+
+### AI 制作可行性检查（v5.1 ⭐ 新增）— 5分
+> **v2.7 教训**：视听专家指出双人亲密互动镜头过多（EP-02 触摸下颌、EP-32 咬颈/亲吻），Seedance 对双人肢体接触一致性是已知短板。
+
+**检查项 L：双人亲密镜头数量**
+- 单集双人亲密镜头（触摸/拥抱/咬/亲吻/互饮）≤ 2 个
+- 超过 2 个 → AI 翻车风险高，需拆短镜头 + 手修关键帧
+- **扣分**：双人亲密镜头 > 2 → -2分
+
+**检查项 M：特效复杂度**
+- 单集特效镜头（雾气变形/发光/影子化/瞳孔变色）≤ 3 个
+- 复杂特效应标记为"后期叠加"而非纯 AI 生成
+- **扣分**：特效镜头 > 3 且未标记后期处理 → -1分
+
+**检查项 N：场景切换频率**
+- 单集场景数 ≤ 5 个（超过 = 一致性成本高 + AI 切换差）
+- **扣分**：场景数 > 5 → -2分
+
 ### 输出格式
 ## EP-XX 审核报告
 ### 分镜节奏 | 维度 | 标准 | 实际 | 结果
 ### 故事审核 | 维度 | 权重 | 判定 | 扣分
 ### 视觉一致性 | 检查项 | 清单值 | 实际值 | 结果
 ### 跨集连续性 | 检查项 | 标准 | 实际 | 结果
-**总分: XX/110**（故事95 + 视觉5 + 连续性5 = 105，分镜节奏5）
+**总分: XX/130**（故事95 + 视觉5 + 连续性5 + 世界观逻辑10 + 节奏平台5 + 文化敏感5 + AI制作5）
 **结论: PASS ✅ / ⚠️需修改 / FAIL ❌**
 **修改建议: 1. 2. 3.**
 ```
@@ -1667,62 +1450,7 @@ result = delegate_task(
 
 ---
 
-## 故事层面审核标准（Aligner v3.0 → v4.0）
-
-> 分镜节奏只解决"好不好看"，故事标准解决"值不值得看"。
-
-### 1. 开局钩子（Opening Hook）
-- **0-3秒** 必须有视觉冲击/冲突爆发/上集悬念回收
-- **0-5秒** 观众必须知道本集核心冲突
-- 首镜优先：动作/表情特写/上集钩子回收 > 对白 > 场景建立
-- ✅ 直接切入关键动作 / ❌ 旁白介绍或空镜铺垫
-
-### 2. 冲突强度（Conflict Stakes）
-- 每集冲突绑定不可逆代价（生命/关系/身份/记忆）
-- 每3-5集冲突强度必须升级
-- ✅ 吸血导致生命倒计时 / ❌ 昼伏夜出的习惯
-
-### 3. 悬念钩子（Cliffhanger）
-- 结尾必须让观众"不看不行"
-- 钩子包含具体威胁+台词/视觉动作
-- ✅ "你的血是我唯一的解药" / ❌ "一切才刚刚开始"
-
-### 4. 倒计时机制（Urgency）
-- 全剧必须有明确期限（生命倒计时/诅咒解除/追捕逼近）
-- 每3-5集提醒一次（咬痕加深、面色苍白、日期逼近）
-- 没有倒计时的短剧 = 观众随时可以停下来
-
-### 5. 人物弧光（Character Arc）
-- 主角从A→B状态（懦弱→调查→反抗）
-- 反派有悲剧动机+内心挣扎
-- 至少1个配角有独立立场和选择
-
-### 6. 核心关系卖点（Core Relationship）
-- 明确核心情感关系（双女主/宿敌/禁忌之恋）
-- 至少3个名场面：克制/靠近/牺牲
-- 必须有"爱恨交织"的张力
-
-### 7. 信息揭露节奏（Reveal Pacing）
-| 阶段 | 时间点 | 标准 |
-|------|--------|------|
-| 暗示 | 前1/4处 | 观众有"不太对"的感觉 |
-| 部分揭露 | 中点前 | 观众基本确定，但全貌未明 |
-| 实锤 | 1/3-1/2处 | 核心身份/真相彻底曝光 |
-
-### 8. 重复剧情检测（Pattern Check）
-- 相同冲突模式连续≥2集 = 预警，≥3集 = FAIL
-- 出现预警后，下一集必须换冲突类型或升级
-
-### 9. 视觉记忆点（Visual Anchor）
-- 每集至少1个题材标志性视觉镜头
-- 观众看完能记住的画面 = 社交传播素材
-
-### 10. 视觉一致性（v4.0 新增 ⭐）
-- Prompts 中角色描述与 manifest.md 一致
-- 多角色同框时每个角色都有外观描述
-- 场景/道具与 manifest.md 匹配
-
----
+> **故事审核 9 项** 详见上方 `## 审核员系统 Prompt（Aligner v5.1）` 中的故事审核评分标准，不再重复。
 
 ## 剧本模板
 
@@ -1836,75 +1564,17 @@ for i in range(1, 37):
 3. 手写补齐 storyboard 和 prompts（不走 delegate_task，速度更快）
 4. 重新验证确认全部存在 → 才能进入工作台阶段
 
-## 生产工作台页面更新
-
-**`build_html.py` 是纯字符串模板（`r"""..."""`），向其中添加 JS/CSS 代码时：**
-
-1. **不要用 f-string！** — JS 代码中的 `{}` 与 Python f-string 冲突，导致大量语法错误
-   - ✅ **正确**：`template = r"""..."""` + `template.replace('__JSON_PLACEHOLDER__', json_str)`
-   - ❌ **错误**：`f"""..."""` — JS 对象字面量 `{type:'img',idx:i}` 会破坏 Python 语法
-
-2. **插入位置** — JS 函数放在 `</script>` 之前，CSS 放在 `</style>` 之前
-   - 使用 `patch` 工具在已有函数后追加（如 `buildCharacters` 之后加 `buildVisualAssets`）
-
-3. **新 Tab 三步走**：
-   - ① HTML tab 按钮：`<div class="tab" data-tab="xxx">标签</div>`
-   - ② HTML tab 内容区：`<div class="tab-content" id="tab-xxx">`
-   - ③ JS 渲染函数：`function buildXxx() {{ ... }}` + 在 `init()` 中调用
-
-4. **数据源** — `generate_index.py` 读取 MD 文件 → 写入 `project_data.json` → `build_html.py` 注入 JS 的 `PROJECT` 全局变量
-
-**`generate_index.py` 新增解析器**：
-- 新增 `parse_xxx(text)` 函数，提取结构化数据（表格、列表等）
-- 在 `main()` 中调用并写入 `data['xxx']`
-- 确保 JSON 可序列化（dict/list/str/int 类型）
-
-**Props 批量注入到帧级 Prompt 的方法**：
-- 从 `manifest.md` 解析道具清单（含出现集数）
-- 构建 `ep_num → props` 映射
-- 每帧 Prompt 用关键词匹配判断是否需要注入对应道具
-- 注入位置：`scene: [...]` 描述之后，或用正则插入到 style prefix 后
-- **实现方式**：用 `re.sub()` 配合闭包计数器（`counter = {'injected': 0}`）而非 `nonlocal`，因为 `re.sub` 回调函数在独立作用域中 `nonlocal` 会报 SyntaxError
-
-**Hollywood Screenplay 转换**：
-- 用 `convert_screenplay.py` 将表格格式剧本转换为好莱坞格式（INT./EXT. scene headings + Action + Character/Dialogue）
-- 场景名中文→英文映射表（`SCENE_MAP`）决定 `INT.` vs `EXT.`
-- 场景继承：当脚本中后续行只有 `S-01`（无场景名），继承上一行的场景位置
-- 输出到 `project_screenplays.json`，由 `generate_index.py` 加载到 `data['screenplays']`
-- Screenplay tab 用 `<pre>` + monospace 字体 + `white-space: pre-wrap` 保留格式化
-
-**build_html.py 常见陷阱**：
-- JS 函数**必须**插入在正确位置（函数体内部），否则会打断已有函数
-  - 之前把 `buildVisualAssets()` 插在了 `buildCharacters` 函数体内，导致 `buildCharacters` 被拆成两半，Python 报 SyntaxError
-  - 修复：先删除错误插入的块，再在目标函数结束后重新插入
-- 在 `init()` 中调用新函数时，放在 `bindEvents()` 之前（bindEvents 是最后一步）
-
-**好莱坞剧本转换（`convert_screenplay.py`）**：
-- 从 `script/EP-XX.md` 表格格式转换为 `INT./EXT. LOCATION - NIGHT` 好莱坞格式
-- 关键陷阱：
-  - 场景名继承：如果 `S-01` 后面没有场景名，需要携带上一行的场景
-  - 表头行会被解析为数据行——跳过 `Scene` / `Action` / `Dialogue` 字段名
-  - 对白格式：`Speaker: "EN" / "CN"` 正则提取，`(OS)` / `V.O.` 单独处理
-  - 动作描述去除中文前缀：`特写——`、`近景——`、`全景——` 等
-  - 场景映射表（`SCENE_MAP`）：中文场景名→英文 `INT./EXT. LOCATION`
-  - `INT.` 不要写 `INT..`（`SCENE_MAP` 只存 location，不要在值里含 `INT.` 再拼接）
-- 输出 `project_screenplays.json` → `generate_index.py` 加载 → `build_html.py` 的 Screenplay tab 展示
-- Screenplay tab 用 `<pre>` + monospace font 保持好莱坞格式缩进
-
-**JS 函数插入常见错误**：
-- ❌ 函数插在已有函数中间（如 `buildCharacters` 的 `{ }` 之间）→ 函数被分裂
-- ✅ 正确做法：找到函数的闭合 `}}` 之后，再插入新函数
-- ✅ 在 `init()` 中调用新函数：插入在 `bindEvents()` 调用之前
-
 ## 生产工作台页面 (Index Page)
 
 > 将三件套 MD 文件转换为交互式 SPA（单 HTML 文件），用于管理 AI 生图/视频流程、追踪进度、一键复制 Prompt。
 > **双文件架构**：`generate_index.py`（MD → JSON） + `build_html.py`（JSON → SPA）
 
-### Step 1: `generate_index.py` — MD 文件解析器
+### Step 1: `generate_index.py` — MD → JSON 解析器
 
 > ⭐ **推荐使用模板**：`templates/generate_index.py`（已包含双格式解析 + VO-only 支持）
 > 复制到项目根目录即可运行：`cp templates/generate_index.py /path/to/project/ && python3 generate_index.py`
+
+**核心结构**（关键陷阱已内联到解析器中）：
 
 ```python
 #!/usr/bin/env python3
@@ -1916,168 +1586,43 @@ def read(path):
     with open(os.path.join(BASE, path), 'r', encoding='utf-8') as f:
         return f.read()
 
-def parse_manifest(text):
-    """Parse visual_assets/manifest.md into structured data."""
-    sections = {}
-    current_section = None
-    current_table = []
-    for line in text.split('\n'):
-        if line.startswith('## ') and not line.startswith('### '):
-            if current_section and current_table:
-                sections[current_section] = current_table
-            current_section = line[3:].strip()
-            current_table = []
-            continue
-        if line.startswith('### '): continue
-        if line.strip().startswith('|') and current_section:
-            cells = [c.strip() for c in line.strip().split('|')[1:-1]]
-            if len(cells) >= 2 and not all(c == '---' for c in cells):
-                current_table.append(cells)
-    if current_section and current_table:
-        sections[current_section] = current_table
-    return sections
-
-def parse_script(md):
-    """Parse script .md — supports both Hollywood screenplay (code block) and legacy table format.
-    
-    ⚠️ 关键修复点（Carmilla 验证）：
-    - 所有正则用 (?=\n## [^#]|\Z) 而非 (?=##|$)，否则 ### 小节标题会被误匹配截断
-    - Scene Breakdown 列数放宽到 >=2（不是5），因为有些行只有 Time+Action 无对白
-    - Key Dialogue 列数用 >=2（不是 ==2），兼容额外列
-    - Cliffhanger 标题兼容 "## Cliffhanger / 终局" 等后缀格式
-    - Voiceovers 初始化空列表，VO-only 集无 Key Dialogue 也不会报错
-    """
-    result = {'scenes': [], 'dialogue': [], 'cliffhanger': '', 'voiceovers': []}
-    # Hollywood screenplay (code block)
-    for m in re.finditer(r'```\n(.*?)\n```', md, re.DOTALL):
-        result['screenplay'] = m.group(1).strip()
-        for sm in re.finditer(r'(EXT\.|INT\.)\s+(.+?)\s*[-—](.+?)(?:\n|$)', result['screenplay'], re.IGNORECASE):
-            result['scenes'].append({'type': sm.group(1), 'location': sm.group(2), 'time': sm.group(3)})
-    # Legacy table format — ⚠️ 用 (?=\n## [^#]|\Z) 避免 ### 被误匹配
-    for m in re.finditer(r'## Scene Breakdown\n(.+?)(?=\n## [^#]|\Z)', md, re.DOTALL):
-        lines = [l for l in m.group(1).split('\n') if '|' in l and '---' not in l]
-        for line in lines[1:]:
-            cols = [c.strip() for c in line.split('|')[1:-1]]
-            if len(cols) >= 2:
-                row = {}
-                headers = ['Time', 'Scene', 'Action', 'Dialogue (EN/CN)', 'BGM']
-                for i, h in enumerate(headers):
-                    row[h] = cols[i] if i < len(cols) else ''
-                result['scenes'].append(row)
-    # Key Dialogue (may be absent in VO-only episodes) — ⚠️ 用 >=2 非 ==2
-    for m in re.finditer(r'## Key Dialogue\n(.+?)(?=\n## [^#]|\Z)', md, re.DOTALL):
-        lines = [l for l in m.group(1).split('\n') if '|' in l and '---' not in l]
-        for line in lines[1:]:
-            cols = [c.strip().strip('"') for c in line.split('|')[1:-1]]
-            if len(cols) >= 2: result['dialogue'].append({'EN':cols[0],'CN':cols[1]})
-    # Voiceovers (may be the only dialogue in VO-only episodes)
-    for m in re.finditer(r'## Voiceovers\n(.+?)(?=\n## [^#]|\Z)', md, re.DOTALL):
-        for line in m.group(1).strip().split('\n'):
-            vo_m = re.match(r'-\s*VOICEOVER\s*\((\w+)\)\s*(.*)', line.strip(), re.DOTALL)
-            if vo_m: result['voiceovers'].append({'speaker': vo_m.group(1), 'text': vo_m.group(2).strip()})
-    # Cliffhanger — ⚠️ 兼容 "## Cliffhanger" 和 "## Cliffhanger / 终局" 格式
-    m = re.search(r'## Cliffhanger[^\n]*\n(.+?)(?=\n## [^#]|\Z)', md, re.DOTALL)
-    if m: result['cliffhanger'] = m.group(1).strip()
-    return result
-
-def parse_storyboard(md):
-    """Parse storyboard .md — extract shots from Key Frames table.
-    
-    ⚠️ 关键修复点（Carmilla 验证）：
-    - 正则用 (?=\n## [^#]|\Z) 而非 (?=##|$)
-    - 列数动态检测：有些项目 7 列（无 Duration），有些 8 列。用 len(cols) >= 7 而非硬编码 >=8
-    """
-    shots = []
-    for m in re.finditer(r'## Key Frames\n(.+?)(?=\n## [^#]|\Z)', md, re.DOTALL):
-        lines = [l for l in m.group(1).split('\n') if '|' in l and '---' not in l]
-        # 第一行是表头，从第二行开始是数据
-        for line in lines[1:]:
-            cols = [c.strip() for c in line.split('|')[1:-1]]
-            # 动态列数：至少 7 列（# Time Shot Camera Duration Description Characters Lighting）
-            if len(cols) >= 7:
-                shot = {'#':cols[0],'Time':cols[1],'Shot':cols[2],'Camera':cols[3]}
-                shot['Duration'] = cols[4] if len(cols) > 4 else ''
-                shot['Description'] = cols[4] if len(cols) > 4 else ''
-                shot['Characters'] = cols[5] if len(cols) > 5 else ''
-                shot['Lighting'] = cols[6] if len(cols) > 6 else ''
-                shots.append(shot)
-    return {'shots': shots}
-
-def parse_prompts(md):
-    result = {'imagePrompts': [], 'videoPrompts': []}
-    for m in re.finditer(r'### Frame (\d+): (.+?)\n\*\*Prompt:\*\*(.*?)(?=\n\n### |\Z)', md, re.DOTALL):
-        result['imagePrompts'].append({'frame':int(m.group(1)),'time':m.group(2).strip(),'prompt':m.group(3).strip()})
-    for m in re.finditer(r'### Shot (\d+): (.+?)\n\*\*Prompt:\*\*(.*?)(?=\n\n### |\Z)', md, re.DOTALL):
-        result['videoPrompts'].append({'shot':int(m.group(1)),'timeRange':m.group(2).strip(),'prompt':m.group(3).strip()})
-    return result
-
-def parse_characters(md):
-    chars = []
-    for m in re.finditer(r'## (.+?)\n(.+?)(?=## |\Z)', md, re.DOTALL):
-        attrs = {}
-        for am in re.finditer(r'- (.+?): (.+)', m.group(2)):
-            attrs[am.group(1)] = am.group(2)
-        chars.append({'name': m.group(1).strip(), 'attrs': attrs})
-    return chars
+# 解析函数：parse_script, parse_storyboard, parse_prompts, parse_characters, parse_manifest
+# 关键修复点：
+# 1. 正则用 (?=\n## [^#]|\Z) 而非 (?=##|$)，否则 ### 会被误匹配
+# 2. Scene Breakdown 列数 >= 2（不是5），Key Dialogue >= 2（不是 ==2）
+# 3. Cliffhanger 兼容 "## Cliffhanger / 终局" 后缀格式
+# 4. Voiceovers 初始化空列表，VO-only 集不会 KeyError
 
 def main():
     data = {'episodes': [], 'characters': [], 'manifest': {}, 'screenplays': {}, 'scenes': [], 'props': []}
-
-    # Parse manifest
+    
+    # 加载 manifest, scene_prop_data.json, project_screenplays.json
     if os.path.exists('visual_assets/manifest.md'):
         data['manifest'] = parse_manifest(read('visual_assets/manifest.md'))
-
-    # Load scenes/props from scene_prop_data.json (v2.2+)
     if os.path.exists('scene_prop_data.json'):
         with open('scene_prop_data.json', 'r', encoding='utf-8') as f:
             sp_data = json.load(f)
         data['scenes'] = sp_data.get('scenes', [])
         data['props'] = sp_data.get('props', [])
-
-    # Load screenplays (if convert_screenplay.py has been run)
-    if os.path.exists('project_screenplays.json'):
-        with open('project_screenplays.json', 'r', encoding='utf-8') as f:
-            data['screenplays'] = json.load(f)
-
-    episodes = []
+    
+    # 遍历 script/ 目录，按 EP 解析三件套
     script_dir = os.path.join(BASE, 'script')
     for fname in sorted(os.listdir(script_dir)):
         if not fname.endswith('.md'): continue
         ep_id = fname.replace('.md', '')
-        script_md = read(f'script/{fname}')
-        title_m = re.search(r'# ' + ep_id + r':\s*(.+?)(?:\s*\|)', script_md)
-        title = title_m.group(1).strip() if title_m else ep_id
-
-        sb_md = read(f'storyboard/{ep_id}.md') if os.path.exists(f'storyboard/{ep_id}.md') else ''
-        pr_md = read(f'prompts/{ep_id}.md') if os.path.exists(f'prompts/{ep_id}.md') else ''
-
         episodes.append({
             'id': ep_id, 'title': title,
-            'script': parse_script(script_md),
+            'script': parse_script(read(f'script/{fname}')),
             'storyboard': parse_storyboard(sb_md),
             'prompts': parse_prompts(pr_md),
         })
-
-    if os.path.exists('characters/characters.md'):
-        data['characters'] = parse_characters(read('characters/characters.md'))
-
-    data['episodes'] = sorted(episodes, key=lambda e: e['id'])
-
-    out = os.path.join(BASE, 'project_data.json')
-    with open(out, 'w', encoding='utf-8') as f:
+    
+    # 输出 JSON
+    with open('project_data.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-
-    total_img = sum(len(ep['prompts']['imagePrompts']) for ep in data['episodes'])
-    total_vid = sum(len(ep['prompts']['videoPrompts']) for ep in data['episodes'])
-    print(f"Parsed {len(data['episodes'])} episodes, {len(data['characters'])} characters")
-    print(f"Total: {total_img} image prompts, {total_vid} video prompts")
-    print(f"Scenes: {len(data['scenes'])}, Props: {len(data['props'])}")
-    print(f"JSON saved to {out} ({os.path.getsize(out)/1024:.0f}KB)")
-
-if __name__ == '__main__':
-    main()
 ```
 
+**完整代码见模板**：`templates/generate_index.py`（含全部解析器实现 + 正则模式速查表）
 ### Step 2: 运行解析
 
 ```bash
@@ -2146,34 +1691,18 @@ tar --exclude='__pycache__' -czf /path/to/desktop/project-name.tar.gz -C /path/t
 ```
 
 ### 常见陷阱
-**批量生产陷阱**
-- **tool call 超时卡住** — `Still working... (18min elapsed, iteration 23/60)` 表示模型响应失败/断流。遇到此情况：**立即终止当前调用**，用 `read_file` 检查文件是否写入成功，如未完成则重新生成。不要让单个 tool call 运行超过 5 分钟无响应。（2026-04-30 Count of Monte Cristo EP13 遭遇）
-- **文件遗漏不报** — 批量生成多集时（10+集），单次 write_file 可能静默失败或中断。生成后**必须运行完整性校验脚本**（见上节"大规模批量生成检查清单"），逐个 EP 检查 script/storyboard/prompts 三件套是否齐全。漏掉一集（如 EP-20）会导致最终工作台数据缺失。
 
-**常见陷阱**
-- **JS 函数插入位置** — 必须放在目标函数闭合 `}}` 之后，不要插在已有函数体内（会分裂函数导致 SyntaxError）
-- **`re.sub()` 回调计数** — 用 `counter = {'injected': 0}` 字典而非 `nonlocal`，因为回调在独立作用域
-- **帧时间清洗** — 中文后缀如 `46-50s 近景` 需要 `clean_time()` 提取纯数字
-- **`init()` 调用顺序** — 新渲染函数放在 `bindEvents()` 之前调用
-- **`parse_table` min_cols 陷阱** — Key Dialogue 表格只有 2 列（`| EN | CN |`），如果 `parse_table` 要求 `≥3` 列会导致对白全量为空。**必须设 `min_cols=2`**（2026-04-30 Carmilla 项目修复：对白从 0 → 413 条）
-- **表头破折号行** — Markdown 表头分隔行（如 `|-------|--------|...|`）会被解析为数据行，渲染成 `-------` 垃圾数据。过滤逻辑：`if all(re.match(r'^[-_]{2,}$', c) for c in cells): continue`
-- **分镜表格列数不固定** — 有些项目分镜是 7 列（无 Duration），有些是 8 列。解析器必须动态检测列数而非硬编码 `>=8`，否则全量分镜被跳过
-- **数据层更新 ≠ 工作台更新** — 修改 `project_data.json` 后必须重新运行 `python3 build_html.py`，否则 index.html 仍是旧数据。工作台渲染的是嵌入的 JSON 快照，不是实时读取 JSON 文件
-- **纯 VO 集无对白表格** — 有些集（如 Count of Monte Cristo EP-05）只有旁白（Voiceover），无 Key Dialogue 表格。解析器必须处理 `## Key Dialogue` 缺失的情况，否则报错
-- **剧本格式不统一** — 部分剧本含 `## Source Screenplay` + 代码块格式，部分含 `## Scene Breakdown` + 表格格式。`generate_index.py` 的 `parse_script()` 必须同时支持两种格式，否则部分集丢失数据
-- **manifest.md 解析跨区污染** — 用 `"服装指南" in md[:md.find(m.group(0))]` 全局扫描会导致表情/规则区段被误判为服装数据。表现：Bandit Leader 服装表混入道具数据，色调规则表被当服装。**修复：按 `##` 大标题切分区段** (`wardrobe_start = md.find('## 服装指南')`, `expression_start = md.find('## 表情/姿态关键词库')`)，每区段独立解析
-- **角色名正则含特殊字符** — `Haydée` 的 `é` 不被 `Haydee` 匹配导致服装数据丢失。正则需覆盖带/不带重音符号变体: `r'(Haydé|Haydée)'`
-- **解析器与源文件标题不一致** — 代码 `md.find('## 表情/姿态库')` 但源文件标题是 `## 表情/姿态关键词库` → 表情库全量丢失。提供 fallback 链: `md.find('...关键词库') or md.find('...库')`
-- **manifest.md 源文件被脏数据污染** — 早期 AI 生成可能将道具表、规则表混入服装表（如 Bandit Leader 下出现 34 条道具行）。**修复：人工检查 manifest.md 各角色章节是否只有 `| 阶段/场景 | 服装 |` 格式的行，非角色行全部删除**
+**解析器陷阱（⭐ 必须遵守）**：
+1. **正则截断** — 所有 `parse_script` / `parse_storyboard` 正则必须用 `(?=\n## [^#]|\Z)` 而非 `(?=##|$)`，否则 `###` 会被误匹配截断
+2. **列数动态检测** — Scene Breakdown/Key Dialogue/分镜表列数必须用 `>= 2`（不是 `==` 或 `>= 5`），动态映射 headers
+3. **Cliffhanger 后缀** — 正则 `## Cliffhanger[^\n]*\n` 兼容 `/ 终局` 等后缀
+4. **Voiceovers 初始化** — result 字典必须包含 `'voiceovers': []`，VO-only 集不会 KeyError
+5. **manifest.md 分区段解析** — 按 `##` 大标题切分区段独立解析，避免全局扫描导致的跨区污染
 
-**解析器致命陷阱（Carmilla 项目全量验证 ⭐ 最高优先级）**：
-- **正则截断陷阱** — 所有 `parse_script` / `parse_storyboard` 的正则必须用 `(?=\n## [^#]|\Z)` 而非 `(?=##|$)`。原因：`(?=##|$)` 会匹配到 `###` 小节标题（如 `### Frame 1:`），导致 Section 内容被截断。Carmilla 项目中此 Bug 导致 Scene Breakdown 只解析到第一行、场景/道具全量丢失。
-- **Scene Breakdown 列数陷阱** — 默认要求 `len(cols) >= 5` 会漏掉只有 2-3 列的行（纯动作无对白）。**必须用 `>= 2` 并动态映射 headers**，否则 BGM 列、对白列缺失的行全部被跳过。
-- **Key Dialogue `== 2` 陷阱** — 用 `len(cols) == 2` 要求恰好两列，但如果表格有额外空格或列数偏移，对白全量丢失。**必须用 `>= 2`**。
-- **Cliffhanger 标题后缀陷阱** — 部分集用 `## Cliffhanger / 终局` 等后缀格式。正则 `## Cliffhanger\n` 无法匹配，改为 `## Cliffhanger[^\n]*\n`。
-- **Voiceovers 未初始化陷阱** — 默认 `result` 字典不含 `voiceovers` 键，VO-only 集调用时 `KeyError`。**必须在 result 初始化时包含 `'voiceovers': []`**。
-- **分镜列数硬编码陷阱** — 默认 `len(cols) >= 8` 跳过 7 列分镜表。改为动态检测 `>= 7` 并条件赋值。
-- **parse_script 重复代码陷阱** — 模板中有两段 `Key Dialogue` 和 `Cliffhanger` 代码（第一段后已有 `return`，第二段永远不会执行）。清理死代码，确保只有一个 return。
+**工作台陷阱**：
+- JS 函数插入：放在目标函数闭合 `}}` 之后，不要插在函数体内
+- 不要 f-string：用 `r"""..."""` + `str.replace()` 注入数据
+- 修改 JSON 后必须重新运行 `build_html.py`，工作台渲染的是嵌入的 JSON 快照
 
 ## 注意事项
 
@@ -2204,357 +1733,31 @@ tar --exclude='__pycache__' -czf /path/to/desktop/project-name.tar.gz -C /path/t
 
 ---
 
-## Drama Studio 系统架构 (v2026-05-09 新增)
-
-> 将 drama-team 的 6 阶段编剧流程扩展为 **12 阶段端到端短剧生成系统**，从用户输入小说/Idea 到最终成片输出。
-> 项目位于 `~/.hermes/tasks/drama-studio/`，设计文档见 `DESIGN.md`。
-
-### 架构演进
-
-```
-drama-team (6 阶段): 大纲 → 人物 → 视觉资产 → 剧本 → 分镜 → Prompts
-                              ↓
-Drama Studio (12 阶段): 输入处理 → 编剧层(7) → 制作层(4) → 交付
-```
-
-### 11 阶段全貌 (v2026-05-09 → v2026-05-10 确认: 11 阶段，无 input_analysis/dubbing)
-
-> **关键合并**：`input_analysis` 合并到 `ip_analysis` — 第一阶段 system prompt 增加"如果用户提供小说，先做内容分析"逻辑，不单独成一阶段。
-
-```
-📝 输入 + 编剧层 (全局，只跑一次)
-  1️⃣  ip_analysis       IP 世界观分析（含小说内容解析）
-  2️⃣  outline           三幕结构大纲、分集梗概
-  3️⃣  characters        角色设定（外貌/性格/关系）
-  4️⃣  visual_assets     视觉风格定义（色调/场景/参考）
-
-🎬 分集层 (按集 EP-01, EP-02...)
-  5️⃣  script           单集剧本 — ⚠️ Aligner 审核 (≥80 PASS)
-  6️⃣  storyboard       分镜表 — ⚠️ Aligner 审核
-  7️⃣  prompts          AI 生图 Prompt — ⚠️ Aligner 审核
-  8️⃣  prompt_optimization 英文→中文 (Seedance 14 项检查)
-
-🎨 制作层 (按集串行)
-  9️⃣  image_gen        Dreamina text2image（角色/场景/特写，全局复用）
-  🔟  video_gen        Seedance 2.0 multimodal2video（自带声音！）
-  1️⃣1️⃣  assembly       FFmpeg 拼接成片
-```
-
-> ⚠️ **关键设计变更 (2026-05-09)**：
-> - **去掉配音阶段** — Seedance 2.0 原生生成带声音的视频，无需 IndexTTS 单独配音
-> - **新增 prompt_optimization 阶段** — 编剧层的英文 prompt 必须经 AI 转为 Seedance 2.0 合规格式（14 项官方检查清单），这是生视频质量的门控
-> - **image_gen 不再按集** — 基础图（角色肖像+场景+特写）全局复用，只跑一次
-
-### 前端设计 (Vite 5174)
-
-三栏布局 + 底部面板：
-- **左侧**：项目列表（名称/状态/进度）
-- **主区**：无限画布（节点编辑器），节点颜色状态：⚪pending → 🔵running → 🟢done → 🔴error → 🟡outdated
-- **底部**：Tab 切换（📄内容查看 / 💬AI 对话修改 / 📋日志 / ▶️预览）
-
-### 后端架构 (Express 3000)
-
-```
-server/
-  index.ts              # Express + WebSocket (端口 3000)
-                        # .env 加载: process.loadEnvFile() (Node 22 原生)
-  ws.ts                 # wsBroadcast() 实时推送
-  prompts.ts            # 各阶段 System Prompt（从 drama-team 技能提取）
-  ai.ts                 # callAI() — vLLM OpenAI API (qwen27b-awq)
-  services/
-    pipeline.ts         # Pipeline orchestrator: runPhase(), alignerLoop()
-    mcp.ts              # 🔥 MCP Client (Streamable HTTP, v2026-05-11)
-                        #   Session 管理 + JSON-RPC 调用 + 异步轮询队列
-                        #   seedanceGenerateVideo / getTaskById
-    mcp-parser.ts       # 🔥 镜头/文本解析器
-                        #   parseVideoShots() / tryParseJson() / cleanText()
-    video_gen.ts        # 视频生成 (MCP seedanceGenerateVideo → 占位降级)
-    image_gen.ts        # 生图 (预留后续 MCP 生图)
-    assembly.ts         # FFmpeg 合成
-  routes/
-    project.ts          # CRUD: /api/projects
-    phase.ts            # 执行: /api/phases/:id/run, /cancel, /order
-  .env                  # 🔥 MCP_URL / MCP_AUTH_TOKEN / LLM 配置
-shared/
-  types.ts              # ProjectData, PhaseStatus, PhaseName
-```
-
-**🔥 MCP 集成 (v2026-05-11)**
-
-视频生成已从 CLI 调用迁移至 MCP 接口。核心模块：
-
-| 文件 | 职责 |
-|------|------|
-| `server/services/mcp.ts` | MCP 客户端：Session 管理、JSON-RPC 调用、异步任务轮询（并发 3 个 shot） |
-| `server/services/mcp-parser.ts` | 解析器：`parseVideoShots()` 从 prompt 提取镜头、JSON 提取、文本清洗 |
-| `server/services/video_gen.ts` | 视频服务：MCP 优先 → FFmpeg 占位降级 |
-| `server/.env` | 配置：`MCP_URL` + `MCP_AUTH_TOKEN`，测试服/正式服一键切换 |
-
-**MCP 服务器信息：**
-- 测试服：`https://kkshort-adsmanager-dev.mikktv.xyz/adsmanager/mcp`
-- 协议：MCP 2025-03-26 (Streamable HTTP)，需 `Mcp-Session-Id` 维持会话
-- 工具：`seedanceGenerateVideo`（异步视频生成，全字段 required）+ `getTaskById`（轮询）
-- 生图工具：待后续上线，架构已预留
-
-**API 端点：**
-- `GET /api/mcp/status` — 连通性检查，返回 `{configured, connected, tools: [...]}`
-
-### 关键技术决策
-
-| 决策 | 选择 | 理由 |
-|------|------|------|
-| LLM | vLLM + Qwen3.6-27B (qwen27b-awq) | 本地运行，编剧质量足够 |
-| 生图 | Dreamina CLI | 多账号并行，角色一致性 |
-| 视频 | Seedance 2.0 | 关键帧引导法 |
-| 配音 | IndexTTS 2.0 | 零样本声音克隆+情感控制 |
-| 合成 | FFmpeg | 成熟、灵活 |
-| 前端 | Vite + 纯 TS | 轻量，不依赖 React/Vue |
-| 存储 | 先内存 Map → 后期 SQLite | 快速迭代 |
-
-### 已知 Bug / 待修复
-
-- **Storyboard 0 字符问题** (2026-05-09 发现)：Storyboard 阶段运行 6.7 分钟但返回 0 字符。根因：上游上下文（ip_analysis+outline+characters+visual_assets 合计 ~10KB+）过长导致 AI 超时或返回空。修复方向：`gatherUpstreamContext()` 加智能截断策略 — 上游内容 >8000 字符用 AI 摘要化到 2000 字；或按集智能截取（只保留本集出场角色+相关场景）。
-- **Prompt 质量不足**：`prompts.ts` 阶段 prompt 是简化版，缺少 drama-team 技能验证过的创作法则（每集必有冲突、Face-slap 必须直接暴力、分镜硬规则等）。需注入 phase-specific constraints。
-- **Seedance 14 项检查未注入**：`prompt_optimization` prompt 缺少官方 14 项检查清单（中文、单人、分镜时序、情绪外化等），直接导致生视频质量差。
-
-### 端口与启动
-
-- 后端：`npx tsx server/index.ts` (端口 3000)
-- 前端：`npx vite` (端口 5174)
-- **重启前清理**：`pkill -f "tsx server/index.ts"`（旧进程残留导致 EADDRINUSE 崩溃）
-
-### QA 验证结果 (Phase A-B)
-
-| 阶段 | 耗时 | 内容量 | Aligner | 状态 |
-|------|------|--------|---------|------|
-| ip_analysis | ~2.5min | 1668 字 | 无 | ✅ |
-| outline | ~2min | 1613 字 | 无 | ✅ |
-| characters | ~3min | 2274 字 | 无 | ✅ |
-| visual_assets | ~4min | 5560 字 | 无 | ✅ |
-| script (EP-01) | ~4min | 3120 字 | 91/100 PASS (Round 1) | ✅ |
-| storyboard (EP-01) | ~6.7min | 0 字 | — | ❌ 待修（上下文过长） |
-| prompts (EP-01) | 未测试 | — | — | ⏳ |
-
-### Phase C 制作层状态 (2026-05-10 盘点)
-
-| 服务 | 代码状态 | 实机验证 | 备注 |
-|------|---------|---------|------|
-| image_gen (Dreamina) | 🟡 骨架完成 | ❌ 未验证 | CLI 调用+多账号切换+压缩 |
-| video_gen (Seedance) | 🟡 骨架完成 | ❌ 未验证 | 4 张轻量参考+轮询下载 |
-| assembly (FFmpeg) | 🟡 骨架完成 | ❌ 未验证 | 归一化+concat+降级方案 |
-
-### 开发路线
-
-- ✅ Phase A: 基础设施（前后端框架、API、WebSocket、基础布局）
-- ✅ Phase B: 编剧层（IP→大纲→角色→视觉→剧本→分镜→Prompts + Aligner）
-- ✅ **Phase C: 制作层**（prompt_optimization → Dreamina 生图 → Seedance 视频 → FFmpeg 合成）
-- 🔵 Phase D: 高级功能（无限画布集成、AI 对话修改、小说上传、持久化存储）
-
----
-
-## Phase C 制作层实现指南 (v2026-05-09 新增)
-
-> Phase C 将编剧层的 Prompts 转化为最终成片：prompt 合规性检查 → Dreamina 生图 → Seedance 视频 → FFmpeg 合成。
-> 项目位于 `~/.hermes/tasks/drama-studio/`，设计文档见 `references/drama-studio-design.md`。
-
-### Phase C 架构
-
-```
-编剧输出 (prompts/EP-XX.md)
-    ↓
-prompt_optimization (14 项 Seedance 检查)
-    ↓
-Dreamina text2image (角色基础图 + 关键帧)
-    ↓
-Seedance multimodal2video (关键帧→视频片段，自带声音)
-    ↓
-FFmpeg 拼接 (成片输出)
-```
-
-### 1. prompt_optimization — Prompt 合规性检查 (9️⃣)
-
-**为什么需要？** Seedance 2.0 有严格的 Prompt 格式要求，编剧层输出的英文 prompt 不能直接用于生视频。
-
-**14 项检查清单（官方）：**
-
-| # | 检查项 | 规则 |
-|---|--------|------|
-| 1 | 语言 | 必须是**中文**，不能英文 |
-| 2 | 角色数 | **最多1个角色**（单人动作） |
-| 3 | 场景 | 必须有，但**不做主体** |
-| 4 | 动作 | 必须有，**角色核心内容**，**缓慢渐进** |
-| 5 | 动作限制 | 避免快速移动、大幅旋转、激烈运动 |
-| 6 | 禁止内容 | 不能含文字/字幕 |
-| 7 | 视角 | **平视**，不能极端仰/俯 |
-| 8 | 距离 | **近景或特写**，不能远景 |
-| 9 | 角色特征 | 必须明确（年龄/性别/外貌/服装） |
-| 10 | 角色一致性 | 同一角色外观不变 |
-| 11 | 镜头运动 | 最多一种缓慢运动（推/拉/摇/移） |
-| 12 | 时间描述 | **不能含时间点**（如"夜晚"→"灯光昏暗"） |
-| 13 | 运镜术语 | **不能出现**"俯拍/推镜头/平移" |
-| 14 | 字数 | 不超过 300 字 |
-
-**Prompt 重写模板（✅ 通过所有检查）：**
-```
-{场景背景}。{角色描述}正在{缓慢动作}。{光影氛围}。
-示例：古堡走廊烛火摇曳，石墙斑驳。一位苍白皮肤的年轻女子正缓缓抚摸胸口。她穿着黑色长裙，神情恐惧。昏暗的烛光映照出她紧张的面容。
-```
-
-**Prompt 优化 AI System Prompt 核心要素：**
-- 逐条验证 14 项，不合格则重写
-- 角色描述从上游 `characters.md` + `manifest.md` 提取（不自己编）
-- 输出 JSON 格式：`{optimized: "...", fixes: [{id: N, original: "...", fixed: "..."}]}`
-
-### 2. image_gen — Dreamina 生图 (🔟)
-
-**不再按集生成！** 基础图全局复用：
-- **角色基础图**：每个角色 1-2 张（正面肖像 + 侧面），用于后续关键帧参考
-- **场景图**：每个唯一场景 1 张（无角色纯环境），用于 Seedance 场景参考
-- **特写图**：关键道具/特效（如咬痕/发光）
-
-**Dreamina 使用要点：**
-- CLI 调用：`dreamina text2image --prompt "..." --aspect 9:16 --seed X`
-- 多账号并行（`dreamina-multi-account` skill）
-- 图片压缩 < 500KB 不稳定，建议 864x1536+ ~1MB
-- 每账号同时仅 1 个任务
-
-### 3. video_gen — Seedance 视频生成 (1️⃣1️⃣)
-
-**关键帧引导法（核心工作流）：**
-1. 先 text2image 生成 5-7 张关键图（60% → 90% prompt 强度）
-2. 作为 `--image` 传入 multimodal2video
-3. 每段 prompt 必须有人物动作/位置（否则空房间）
-
-**Seedance 2.0 限制（⚠️ 避免翻车）：**
-- 每段有且仅有 1 个角色（双人易融合/跳变）
-- 动作缓慢渐进，忌大幅移动
-- 场景做背景，"静止+微动作"
-- 特效弱、黑屏/镜子做不好
-- **原生生成带声音的视频**（无需额外配音）
-
-### 4. assembly — FFmpeg 合成 (1️⃣2️⃣)
-
-**拼接逻辑：**
-```bash
-# 将多个视频片段按顺序拼接
-ffmpeg -f concat -i filelist.txt -c copy output.mp4
-```
-
-**filelist.txt 格式：**
-```
-file 'EP-01/shot-01.mp4'
-file 'EP-01/shot-02.mp4'
-...
-```
-
-**已知问题：**
-- 种子账户 984268 无法使用 multimodal2video → 需切账号
-- Prompt 优化是质量门控，不合格直接导致空视频
-- 视频片段时长需与分镜时间对齐
-
-### Phase C 后端实现要点
-
-**services/pipeline.ts 新增方法：**
-- `optimizePrompt()` — 调用 LLM 改写 prompt + 14 项验证
-- `generateImage()` — Dreamina CLI 调用 + 图片路径记录
-- `generateVideo()` — Seedance CLI 调用 + 结果验证
-- `assembleEpisode()` — FFmpeg 拼接 + 成片输出
-
-**数据模型扩展：**
-```typescript
-interface PhaseCData {
-  optimized_prompts: string[];  // 优化后的中文 prompt
-  image_paths: string[];         // Dreamina 输出图片路径
-  video_paths: string[];         // Seedance 输出视频路径
-  final_video: string;           // 成片路径
-}
-```
-
-**常见陷阱：**
-- 编剧 prompt 直接丢给 Seedance → 空视频/画面不符（必须经过优化）
-- 角色基础图质量差 → 所有关键帧漂移（先验证角色图再批量）
-- 账号同时多任务 → Dreamina 排队/失败（串行 or 多账号）
-- Seedance 提示语含英文 → 直接失败（必须中文）
-
----
-
-## GitHub 同步 (https://github.com/husw725/drama-team)
-
-> 技能本地存储在 `~/.hermes/skills/creative/hermes-short-drama-team/`，通过 git remote 指向 `husw725/drama-team`。本地 skill 文件变化需要手动推送到 GitHub。
-
-**同步流程：**
-```bash
-cd ~/.hermes/skills/creative/hermes-short-drama-team
-# 1. 确保 remote 指向 drama-team 仓库
-git remote set-url origin https://husw725:<TOKEN>@github.com/husw725/drama-team.git
-# 2. 拉取远端（可能遇到 forced update）
-git pull --rebase origin main
-# 3. 添加新文件/变更
-git add -A && git commit -m "feat: ..."
-# 4. 推送
-git push origin main
-```
-
-### 常见陷阱
-- `git push` 被拒（remote 有新提交）→ `git pull --rebase origin main` 再 push
-- rebase 可能导致本地独有文件丢失（如 `templates/fix_prompts_template.py` 曾丢失）→ 推送后检查文件完整性
-- 本地 skill 文件 vs GitHub 仓库文件可能不同步 → 用 `git log --oneline` 对比确认
-
-### vLLM 本地模型调用陷阱（⭐ 2026-05-13 验证）
-
-> **问题**：Qwen3.6-27B-AWQ（带思考模式）通过 vLLM 调用时，返回 `reasoning` 字段而非 `content`，导致 `message.content` 为 `None`。
-
-**根因**：模型的 reasoning 部分消耗了 max_tokens 预算，导致实际输出部分被截断或为空。
-
-**修复方案**：
-1. **max_tokens 必须足够大** — 至少 8192（含 reasoning 开销），而非 4096
-2. **空值检查** — 调用后检查 `resp.choices[0].message.content` 是否为 `None`
-3. **降级策略** — content 为 None 时重试或返回空
-
-```python
-# ❌ 错误：max_tokens 太小
-resp = client.chat.completions.create(
-    model="qwen27b-awq",
-    messages=[...],
-    max_tokens=4096  # reasoning 耗尽，content 为 None
-)
-return resp.choices[0].message.content  # TypeError: write() argument must be str, not None
-
-# ✅ 正确：足够大的 max_tokens + None 检查
-resp = client.chat.completions.create(
-    model="qwen27b-awq",
-    messages=[...],
-    max_tokens=8192  # 给 reasoning 留足空间
-)
-content = resp.choices[0].message.content
-if content is None:
-    # 重试或返回空
-    return ""
-return content
-```
-
-**诊断命令**：
-```bash
-# 检查模型是否返回 reasoning
-curl -s http://localhost:8000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"qwen27b-awq","messages":[{"role":"user","content":"hello"}],"max_tokens":20}' \
-  | python3 -c "import sys,json; d=json.load(sys.stdin); m=d['choices'][0]['message']; print(f'content: {m.get(\"content\")}'); print(f'reasoning: {m.get(\"reasoning\")}')"
-```
-
-**批量生成分镜/Prompts 脚本模板**：
-- 用 `openai` Python 库调用 vLLM（`base_url=http://localhost:8000/v1`）
-- 好莱坞剧本解析：角色名全大写一行，对白下一行（无引号），parenthetical 行 `^\(.*\)$` 需跳过
-- 脚本存为 `episodes_src/EP-NN.txt`（按 `EPISODE \d+:` 切分）
-- 后台运行 + `notify_on_complete=true` 用于长时间任务（5-32集 × 每集约 2-5 分钟）
+## Drama Studio 集成参考
+
+> Drama Studio 是 drama-team 的 Web UI 扩展（11 阶段流水线），项目位于 `~/.hermes/tasks/drama-studio/`。
+> 启动：后端 `server/index.ts`（端口 3000），TapNow 前端端口 5176。
+> AI 模型默认 qwen27b-awq（本地）。详见 `DESIGN.md`。
+
+**核心架构**：
+- 编剧层 7 阶段（输入处理 + 标准 6 阶段）→ 制作层 4 阶段（生图/生视频/配音/合成）→ 交付
+- MCP 集成（`services/mcp.ts`，并发 3），全局资源一次生成全剧复用
+- TapNow 为 state-based 无 React Router，四级下钻有返回导航，新建必须输入入口
+- 工作流：全局资源(角色/场景/道具图)生一次 → 每集独立：剧本→分镜→Prompt→优化→生图→生视频→单集合成
+- 端口：后端 3000，经典前端 5174，Luma 5175，TapNow 5176
+
+## GitHub 同步
+
+- 技能库仓库：`https://github.com/husw725/drama-prompts/`
+- 同步：`git add -A && git commit -m "update" && git push`
+- 读者人设更新参考：`reviewer-combo/SKILL.md`
 
 ## 相关技能
 
-- `hermes-agent` - Hermes Agent 基础使用
-- `writing-plans` - 多步骤任务的规划方法
-- `novel-to-short-drama-adaptation` - 小说改编短剧流程
-- `short-drama-reviewer` - 多维度用户视角评审
-- `short-dreamina-shot-generation` - 即梦CLI生图工作流
-- `seedance2-short-drama-workflow` - Seedance 2.0 视频生成
-- `drama-canvas-infinite-canvas` - 无限画布节点流水线系统（纯 DOM + CSS Transform，无线自动关联）⭐ **v2026-05-08 取代旧 React Flow 方案**
-- `drama-project-index-page` (已归档至 `.archive/`，内容已合并到本技能的"生产工作台页面"章节)
+- `hermes-agent` — Hermes Agent 配置与调试
+- `writing-plans` — 实施规划与任务分解
+- `novel-to-short-drama-adaptation` — 小说改编短剧流程
+- `short-drama-production-index` — 短剧工作台 JSON/HTML 生成
+- `drama-studio` — 11 阶段 Web UI 短剧制作系统
+- `seedance2-short-drama-workflow` — Seedance 2.0 短剧制作工作流
+- `video-dubbing-indextts2` — IndexTTS 2.0 翻译配音工作流
