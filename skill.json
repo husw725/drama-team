@@ -1,0 +1,77 @@
+{
+  "name": "hermes-short-drama-team",
+  "version": "2.3.1",
+  "description": "使用 Hermes Agent 搭建多 Agent 协作的短剧编剧系统 — 从小说到剧本、分镜、AI生图Prompt的全流程，含视觉资产一致性管控与独立审核机制",
+  "triggers": [
+    "创作短剧",
+    "写剧本",
+    "编剧本",
+    "短剧创作",
+    "悬疑短剧",
+    "复仇短剧",
+    "甜宠短剧",
+    "多集剧本",
+    "剧本创作"
+  ],
+  "agents": {
+    "writer": {
+      "id": "drama-writer",
+      "description": "主编剧 Agent，负责创作剧本、分镜、AI Prompts",
+      "prompt": "prompts/writer.md"
+    },
+    "visual_director": {
+      "id": "visual-director",
+      "description": "视觉导演 Agent，创建视觉资产清单，定义角色外观、服装、道具、场景的统一视觉规范",
+      "prompt": "prompts/visual_director.md"
+    },
+    "aligner": {
+      "id": "drama-aligner",
+      "description": "Script Aligner 审核员 Agent，独立审核剧本/分镜/Prompts，返回 PASS/FAIL（含视觉一致性检查）",
+      "prompt": "prompts/aligner.md"
+    },
+    "recorder": {
+      "id": "drama-recorder",
+      "description": "Script Recorder 记录员 Agent，记录创作全过程，维护项目记忆",
+      "prompt": "prompts/recorder.md"
+    }
+  },
+  "scripts": {
+    "python": "scripts/drama_team.py",
+    "node": "scripts/drama_team.js"
+  },
+  "templates": [
+    "templates/outline.md",
+    "templates/character.md",
+    "templates/episode-index.md",
+    "templates/episode.md"
+  ],
+  "examples": [
+    "examples/sample-project"
+  ],
+  "docs": [
+    "docs/quickstart.md",
+    "docs/implementation.md",
+    "docs/best-practices.md"
+  ],
+  "author": "husw725",
+  "repository": "https://github.com/husw725/drama-team",
+  "license": "MIT",
+  "keywords": [
+    "Short-Drama",
+    "Hermes-Agent",
+    "Multi-Agent",
+    "Scriptwriting",
+    "Creative-AI",
+    "Visual-Consistency",
+    "Scene-Reference",
+    "Prop-Reference"
+  ],
+  "requirements": {
+    "openclaw": ">=2024.0.0",
+    "features": [
+      "sessions_spawn",
+      "file_read",
+      "file_write"
+    ]
+  }
+}

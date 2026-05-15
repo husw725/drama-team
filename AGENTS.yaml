@@ -1,0 +1,231 @@
+# Agent 配置 - Drama Team
+
+这个文件定义了 Drama Team 的三个核心 Agent。
+
+---
+
+## Writer Agent
+
+**Agent ID**: `drama-writer`
+
+**角色**: 主编剧，负责创作剧本
+
+**能力**:
+- 文件读写（读取大纲、人物、集目录）
+- 剧本创作（遵循短剧法则）
+- 迭代修改（根据审核反馈）
+
+**提示词**: `prompts/writer.md`
+
+**输入**:
+- `outline.md` - 项目大纲
+- `character.md` - 人物设定
+- `episode-index.md` - 集目录
+- `EP-XX.md` - 前几集剧本（用于连贯性）
+- 审核反馈（如果是迭代修改）
+
+**输出**:
+- `EP-XX.md` - 剧本正文
+
+**调用示例**:
+```javascript
+sessions_spawn({
+  runtime: "acp",
+  agentId: "drama-writer",
+  task: "创作 EP-01 剧本",
+  cwd: "/path/to/drama-project",
+  attachments: [
+    { name: "outline.md", content: "..." },
+    { name: "character.md", content: "..." },
+    { name: "episode-index.md", content: "..." }
+  ]
+})
+```
+
+---
+
+## Aligner Agent
+
+**Agent ID**: `drama-aligner`
+
+**角色**: 审核员，负责质量检查
+
+**能力**:
+- 剧本审核（检查短剧法则）
+- 返回 PASS/FAIL
+- 提供修改建议
+
+**提示词**: `prompts/aligner.md`
+
+**输入**:
+- `EP-XX.md` - 待审核剧本
+
+**输出**:
+```json
+{
+  "status": "PASS 或 FAIL",
+  "score": 4.5,
+  "feedback": "具体反馈（如果 FAIL）",
+  "suggestions": [
+    "修改建议 1",
+    "修改建议 2"
+  ]
+}
+```
+
+**调用示例**:
+```javascript
+sessions_spawn({
+  runtime: "acp",
+  agentId: "drama-aligner",
+  task: "审核 EP-01 剧本质量",
+  cwd: "/path/to/drama-project",
+  attachments: [
+    { name: "EP-01.md", content: "..." }
+  ]
+})
+```
+
+---
+
+## Recorder Agent
+
+**Agent ID**: `drama-recorder`
+
+**角色**: 记录员，负责进度追踪
+
+**能力**:
+- 记录创作进度
+- 追踪伏笔
+- 保存决策历史
+
+**提示词**: `prompts/recorder.md`
+
+**输入**:
+- `EP-XX.md` - 已完成剧本
+- 审核结果
+- 创作决策
+
+**输出**:
+- 更新 `script.progress.md`
+
+**调用示例**:
+```javascript
+sessions_spawn({
+  runtime: "acp",
+  agentId: "drama-recorder",
+  task: "记录 EP-01 创作进度",
+  cwd: "/path/to/drama-project",
+  attachments: [
+    { name: "EP-01.md", content: "..." },
+    { name: "script.progress.md", content: "..." }
+  ]
+})
+```
+
+---
+
+## Producer Agent（制作人）⭐ 新增
+
+**Agent ID**: `drama-producer`
+
+**角色**: 制作人，负责统筹管理整个创作团队
+
+**能力**:
+- 🎯 任务管理：制定计划、分配任务、监控执行
+- 📊 进度管理：实时追踪、计算进度、预估时间
+- 📈 产出统计：质量评分、通过率、迭代统计
+- ⚠️ 问题收集：记录问题、识别风险、生成报告
+- 📢 进度上报：定期汇报、主动提醒、响应查询
+
+**提示词**: `prompts/producer.md`
+
+**工作模式**:
+- **自动模式**（默认）：自动调度 Agent，无需主会话监控
+- **交互模式**：等待用户指令，响应查询
+
+**决策权限**:
+- ✅ 自动决策：启动 Agent、迭代修改（≤3次）、调整顺序
+- ⚠️ 需要上报：迭代>3次、质量下降、重大漏洞
+- ❌ 需要人工：迭代>5次、连续低分、方向分歧
+
+**上报时机**:
+- 完成每 5 集时
+- 达到里程碑（25%、50%、75%、100%）
+- 遇到需要上报的问题
+- 用户主动查询
+
+**调用示例**:
+```javascript
+// 启动制作人（推荐方式）
+sessions_spawn({
+  runtime: "subagent",
+  mode: "session",  // 持续运行
+  agentId: "drama-producer",
+  task: "统筹管理《午夜来电》创作，自动完成剩余剧本",
+  cwd: "/path/to/drama-project"
+})
+```
+
+**优势**:
+- 🚀 主会话解放：启动后无需时刻盯着
+- 📊 自动管理：自动调度、监控、统计
+- 💡 智能上报：重要事件主动提醒
+- 🎯 效率优化：识别瓶颈、优化流程
+
+---
+
+## 协作流程
+
+```
+1. 用户请求创作 EP-XX
+   ↓
+2. 启动 Writer Agent
+   - 读取上下文
+   - 创作初稿
+   ↓
+3. 启动 Aligner Agent
+   - 审核剧本
+   - 返回 PASS/FAIL
+   ↓
+4. 如果 FAIL:
+   - 将反馈传回 Writer
+   - Writer 修改剧本
+   - 再次提交 Aligner
+   - 重复直到 PASS（最多 5 次）
+   ↓
+5. 启动 Recorder Agent
+   - 记录进度
+   - 追踪伏笔
+   ↓
+6. 完成
+```
+
+---
+
+## 配置要求
+
+要使用这些 Agent，需要在 OpenClaw 配置中添加：
+
+```yaml
+agents:
+  drama-writer:
+    model: modelarts/glm-5
+    systemPrompt: file://prompts/writer.md
+    tools: [read, write, edit]
+    
+  drama-aligner:
+    model: modelarts/glm-5
+    systemPrompt: file://prompts/aligner.md
+    tools: [read]
+    
+  drama-recorder:
+    model: modelarts/glm-5
+    systemPrompt: file://prompts/recorder.md
+    tools: [read, write, edit]
+```
+
+---
+
+**版本**: 1.0
+**更新**: 2026-04-22
