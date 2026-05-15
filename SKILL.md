@@ -1,7 +1,7 @@
 ---
-name: hermes-short-drama-team
+name: drama-team
 description: 短剧编剧全流程系统 — 严格按集串行生成，含剧集连续性追踪、伏笔管理、视觉一致性管控与独立审核机制
-version: 3.3
+version: 3.4
 author: Hermes Agent + User
 license: MIT
 metadata:
@@ -33,16 +33,67 @@ metadata:
 > 4. `normalize_char` 需要处理 `(CONT'D)` 和 `(V.O.)` 后缀
 > 5. 对白中的剧本术语（INSERT、SUPERIMPOSE、MATCH CUT TO）需要后处理清理
 
-### 🔥 本地模型批量 API 调用硬伤（v3.1 ⭐ 2026-05-15 实测）
+### 🔥 剧本提取：质量优先（v3.3 ⭐ 2026-05-15 Carmilla v2 教训）
+
+> **用户原话**："就你自己一集一集分析提取，我们要高质量"
+> **教训**：正则提取对白持续失败（动作描述混入对白、V.O.混淆、CONT'D归并失败、多行拼接断裂）。主模型逐集精读，对白/VO/Cliffhanger 准确无误，每集 30 秒，33 集一次完成。
+> **强制规则**：剧本对白、V.O.、Cliffhanger 提取 **只用主模型逐集精读**，不调正则脚本，不让子代理跑。
 
 > **实测数据**：本地 qwen27b-awq（port 8000）串行 16 批（每批 2 集）LLM 分镜生成，300 秒超时后才完成 0 集。
 > **根因**：每集需要 1 次 HTTP 请求 + 模型推理 30-60 秒 + 上下文传输。32 集 × 30 秒 = 16 分钟，超时。
 > **强制规则**：32 集以上的批量分镜/Prompts 生成，**不要用本地模型 API 循环调用**。改用主模型逐集直接写（write_file 模式），主模型已加载上下文，无需 HTTP 开销。
 > **例外**：单集精修（1-2 集）可以用子代理或本地 API，但超过 5 集必须切主模型。
 
-### 🔥 子 Agent 委托策略（v2.6 ⭐ 2026-05-12 Lady Audley's Secret 验证）
+### 子 Agent 委托策略（v2.6 ⭐ 2026-05-12 Lady Audley's Secret 验证）
 
 > **核心缺陷修复**：一次性委托 24+ 集给子 Agent 导致 token 耗尽/中断/跳过审核。
+> **v3.5 升级（2026-05-15 Carmilla 验证）**：用户明确纠正"不要开子任务去做，你就主任务做完它"——子代理用于纯文本写作（剧本/分镜/Prompts/Review）必断。
+
+### 🔥 硬规则：剧本/分镜/Prompts/Review 生成，主模型直接写（v3.5 ⭐）
+
+| 任务类型 | 策略 | 理由 |
+|----------|------|------|
+| **剧本生成** | 主模型 write_file | 上下文已加载，直接写 |
+| **分镜生成** | 主模型 write_file | 2-3集合并写入最佳（见下方批量模式） |
+| **Prompts 生成** | 主模型 write_file | 纯文本写入，子代理 overhead 大 |
+| **Review 审核** | 主模型直接做 | 多集审查子代理必超时 |
+| **单集精修补遗** | 主模型 write_file | 1 集也要主模型做，子代理不值得启动开销 |
+| **读者评审** | 主模型内联审查 | 多集采样+内联报告 |
+
+### 子代理唯一适用场景
+- **代码脚本编写**（generate_index.py, build_html.py, fix_prompts.py）
+- **视频生成任务**（Dreamina/Seedance API 调用，可异步+notify）
+- **独立推理任务**（单集质量分析、竞品对标）
+
+### 🔥 批量 Prompts/Review 生成模式（v3.5 ⭐ 2026-05-15 Carmilla EP-10~30 验证）
+
+**Prompts 批量写入**：主模型逐集 write_file，每集 1 次调用。EP-24~30（7集 Prompts）7 次 write_file 完成，每次 5-7K chars。
+**Review 批量写入**：主模型用 `execute_code` 构造 Python 字典（所有集 Review 内容），一次性 write_file 全部。EP-10/13~30（19集 Review）单次 execute_code 完成，总耗时 12 秒 vs 逐集 write_file 预计 20+ 秒。
+
+```python
+# Review 批量模式（推荐 ⭐ — 19集 12秒完成）
+from hermes_tools import write_file
+
+reviews = {
+    '10': '# EP-10 Review: ...\n## Episode Review — Score: 93/100 ✅\n...',
+    '13': '# EP-13 Review: ...\n## Episode Review — Score: 92/100 ✅\n...',
+    # ... 所有集
+}
+
+for ep, content in reviews.items():
+    write_file(f"review/EP-{ep}.md", content)
+
+# Prompts 批量模式 — 逐集 write_file（每集需要独立上下文推理）
+# for ep in ['24','25','26','27','28','29','30']:
+#     read_file(f"storyboard/EP-{ep}.md")  # 先读分镜
+#     write_file(f"prompts/EP-{ep}.md", generated_content)  # 再写 Prompt
+```
+
+**选择依据**：
+| 任务 | 推荐模式 | 理由 |
+|------|---------|------|
+| Prompts | 逐集 write_file | 需要逐集读分镜+独立推理，不适合字典构造 |
+| Review | execute_code 字典批量 | 可先全部读取分镜到内存，再批量生成+写入 |
 
 ### 失败模式（Lady Audley's Secret 实测）
 
@@ -1271,9 +1322,25 @@ a vampire woman looking in terror...
 >
 > ⚠️ **v3.1 关键教训（Carmilla v1→v2 踩坑）**：
 > - **永远确认"分镜基于哪个剧本版本"** — v1 和 v2 可能完全不同（Carmilla v1 改了 1207 行，v2 只改了 37 行）。分镜如果基于 v1 生成，v2 来了要全部重来。
-> - **新版本剧本 → 先 `diff` 确认差异量**：`wc -l` 对比两版行数 + `difflib` 对比差异行，再决定是"增量修改 6 集"还是"全量重做 32 集"。
+> - **新版本剧本 → 用 `difflib.SequenceMatcher` 自动量化差异量**：
+>   ```python
+>   import re, difflib
+>   # 新脚本按集拆分
+>   ep_pattern = re.compile(r'^EPISODE (\d+):', re.MULTILINE)
+>   ep_splits = list(ep_pattern.finditer(new_script))
+>   for i, m in enumerate(ep_splits):
+>       ep_num = int(m.group(1))
+>       new_text = new_script[m.start():ep_splits[i+1].start() if i+1 < len(ep_splits) else len(new_script)]
+>       old_text = open(f'script/EP-{ep_num:02d}.md').read()
+>       ratio = difflib.SequenceMatcher(None, new_text, old_text).ratio()
+>       if ratio < 0.7: print(f"EP-{ep_num:02d}: {ratio:.0%} → 需全量重写")
+>       elif ratio < 0.95: print(f"EP-{ep_num:02d}: {ratio:.0%} → 增量修改")
+>       else: print(f"EP-{ep_num:02d}: {ratio:.0%} → 无需修改")
+>   ```
+>   **经验值**：ratio < 70% → 全量重写分镜+Prompts；70-95% → 增量修改；>95% → 无需改动
 > - **保留原始剧本**：`carmilla_full_text.txt`（原始）、`carmilla_modified.txt`（v1）、`carmilla_revised_v2.txt`（v2）都要保留，版本清晰。
 > - **Index 页面数据源跟着剧本版本走**：剧本换了，project_data.json 要重新生成，index.html 要重新 build。
+> - **影响范围判定**：剧本全换 → 分镜全换 → Prompts 全换；角色人设/Manifest/已生成图片可保留。
 
 ## 审核员系统（三视角定性 + 三Aligner定量）
 
@@ -1464,6 +1531,13 @@ a vampire woman looking in terror...
 | 5 | **AI指令颗粒度** | 15 | 🤖 每个镜头是否有 AI 可执行的指令：① 特效参数明确（位置/颜色/透明度）② AI约束词（面部不扭曲/液体不穿模/肢体不穿插）③ 光影描述具体 |
 | 6 | **情绪递进** | 15 | 🌊 **动态评估**：这集情绪终点是什么？镜头是否支撑弧线？不强制"平静→爆发→回落"，而是检查：① 情绪变化是否被镜头语言"看见" ② 角色弧光转折是否有运镜/光影对比（如恐惧=特写+摇晃 vs 决心=中景+稳定） |
 | | **合计** | **100** | |
+
+#### 🔥 Atmosphere 列常见错误（v3.3 ⭐ 2026-05-15 导演纠正）
+
+- ❌ **写成情绪词**：如"恐怖压抑"、"暧昧紧张"、"悲伤回忆" — 这些属于 Description 列
+- ✅ **写成物理环境**：如"深夜/雨/闪电"、"黄昏/阴/微光"、"室内/无窗/人工光"
+- **根因**：Atmosphere 是 Lighting 列的前置条件。先知道"深夜+雨+闪电"，Lighting 才能据此推理光源（闪电冷白+烛火暖黄+暗角）。如果写了"恐怖压抑"，Lighting 无法从中推导出实际光源。
+- **检查项**：Atmosphere 列中的词是否能在实际场景中"看到"（天气/时间/光线）而非"感觉到"（情绪）
 
 #### 集类型参考（非强制规则，仅帮助判断）
 
@@ -1917,6 +1991,12 @@ for ep, (script, sb, pr) in episodes.items():
             f.write(content)
 ```
 
+**批量分镜最佳实践（v3.4 ⭐ 2026-05-15 Carmilla v2 验证）**：
+- **2-3 集合并生成**：用户确认"后面可以尝试2集或3集合一起去生成"。主模型单次输出 20-30K chars 不中断，是最佳批量粒度。
+- **写前必做**：先读剧本 → 分析集类型(恐怖/对峙/亲密/揭示/调查) → 确定节奏/运镜/灯光策略 → 再生成。
+- **写后必做**：每集内联 Storyboard-Aligner 自审（6维度评分），≥80 分 PASS。
+- **详细实战模式**：见 `references/storyboard-bulk-generation-patterns.md`（集类型分类、运镜策略、节奏模式、常见扣分项）
+
 **批量模式 vs 多 Agent 模式的选择：**
 | 场景 | 推荐方式 |
 |------|---------|
@@ -1961,10 +2041,11 @@ for i in range(1, 37):
 3. 手写补齐 storyboard 和 prompts（不走 delegate_task，速度更快）
 4. 重新验证确认全部存在 → 才能进入工作台阶段
 
-## 生产工作台页面 (Index Page)
+## 生产工作台页面 (Index Page) — v4.0
 
 > 将三件套 MD 文件转换为交互式 SPA（单 HTML 文件），用于管理 AI 生图/视频流程、追踪进度、一键复制 Prompt。
-> **双文件架构**：`generate_index.py`（MD → JSON） + `build_html.py`（JSON → SPA）
+> **三文件架构 v4.0**：`generate_index.py`（MD → JSON） + `workbench/`（固定模板 + 构建脚本）
+> 详细规范见：`drama-prompts/workbench/` 或技能 `short-drama-production-index`
 
 ### Step 1: `generate_index.py` — MD → JSON 解析器
 
@@ -1991,9 +2072,9 @@ def read(path):
 # 4. Voiceovers 初始化空列表，VO-only 集不会 KeyError
 
 def main():
-    data = {'episodes': [], 'characters': [], 'manifest': {}, 'screenplays': {}, 'scenes': [], 'props': []}
+    data = {'project': 'ProjectName', 'total_episodes': 33, 'episodes': [], 'characters': [], 'manifest': {}, 'scenes': [], 'props': []}
     
-    # 加载 manifest, scene_prop_data.json, project_screenplays.json
+    # 加载 manifest, scene_prop_data.json
     if os.path.exists('visual_assets/manifest.md'):
         data['manifest'] = parse_manifest(read('visual_assets/manifest.md'))
     if os.path.exists('scene_prop_data.json'):
@@ -2020,6 +2101,9 @@ def main():
 ```
 
 **完整代码见模板**：`templates/generate_index.py`（含全部解析器实现 + 正则模式速查表）
+
+> ⭐ **数据提取原则（用户偏好）**：剧本对白/VO/Cliffhanger 等复杂结构化数据 → **主模型直接提取**，不用正则。规则格式（分镜 Markdown 表格、manifest 表格）→ 正则脚本。
+
 ### Step 2: 运行解析
 
 ```bash
@@ -2028,55 +2112,43 @@ python3 generate_index.py
 # → 生成 project_data.json
 ```
 
-### Step 3: `build_html.py` — SPA 生成器
+### Step 3: 复制工作台风架 + 构建
 
-**关键技术点**：
-1. **分镜 (storyboard)** — 分镜表 + 进度追踪
-2. **剧本 (script)** — 场景分解 + 对白 + 悬念
-3. **Prompt (prompts)** — Image/Video Prompts + 批量复制
-4. **视觉资产 (visual_assets)** — manifest.md 表格展示
-5. **Screenplay (screenplay)** — 好莱坞格式剧本 + 集数切换
-6. **角色 (characters)** — 角色设定一览
+```bash
+# 从 drama-prompts 复制 workbench 到项目
+cp -r ~/.hermes/tasks/drama-prompts/workbench/* /path/to/project/
 
-**关键技术点**：
-- **不要用 f-string！** — 用 `r"""..."""` + `str.replace()` 注入数据，避免 JS `{}` 与 Python 冲突
-  ```python
-  template = r"""<!DOCTYPE html>...const PROJECT = __JSON_PLACEHOLDER__;...</html>"""
-  html = template.replace('__JSON_PLACEHOLDER__', json.dumps(data, ensure_ascii=False))
-  ```
-- `build_html.py` 将 `project_data.json` 通过 `json.dumps` 注入 JS 的 `PROJECT` 全局变量
-- **纯前端 SPA**：零依赖，单 HTML 文件，Tab 切换纯 JS 实现
-- **localStorage 状态管理**：进度追踪、Prompt 编辑、图片状态持久化到浏览器 localStorage
-  ```js
-  // 示例：持久化帧进度
-  function saveProgress() {{
-      localStorage.setItem('project_progress', JSON.stringify(progressState));
-  }}
-  function loadProgress() {{
-      const saved = localStorage.getItem('project_progress');
-      return saved ? JSON.parse(saved) : {{}};
-  }}
-  ```
+# 构建
+cd /path/to/project
+python3 build_html.py
+# → 生成 index.html（~635KB，单文件自包含，内含所有数据分块）
+```
 
-### 新增 Tab 三步走
+**v4.0 工作台架构**：
 
-1. **HTML tab 按钮**：`<div class="tab" data-tab="xxx">标签</div>`
-2. **HTML 内容区**：`<div class="tab-content" id="tab-xxx"><div id="xxxContainer"></div></div>`
-3. **JS 渲染函数**：`function buildXxx() {{ ... }}` + 在 `init()` 中调用（放在 `bindEvents()` 之前）
+| 文件 | 角色 | 大小 |
+|------|------|------|
+| `template.html` | 固定 SPA 应用模板，含 9 Tab + 附件预览 + 全量可编辑 + 导入/导出 | ~32KB |
+| `build_html.py` | 构建脚本：读取 JSON → 分块（~30KB/块）→ 注入 → 输出 index.html | ~2KB |
+| `project_data.json` | 数据源（`generate_index.py` 生成） | 项目相关 |
+| `index.html` | 最终产物，单文件自包含，双击即用 | ~635KB |
 
-### `generate_index.py` 新增解析器
+**9 个 Tab**：📊 仪表盘 / 🎬 分镜 / 📝 剧本 / 👤 角色 / 🏰 场景 / 🧰 道具 / 🖼️ 图片Prompt / 🎞️ 视频Prompt / 📁 素材库
 
-- 新增 `parse_xxx(text)` 函数，提取结构化数据（表格、列表等）
-- 在 `main()` 中调用并写入 `data['xxx']`
-- 确保 JSON 可序列化（dict/list/str/int 类型）
+**核心特性**：
+- **全量可编辑**：所有文本字段 `contenteditable`，失焦自动存 localStorage，刷新不丢
+- **💾 保存 JSON**：合并编辑回 JSON 后下载，替换后 `python3 build_html.py` 重新生成
+- **📂 加载 JSON**：选择本地 JSON 文件导入替换
+- **数据分块注入**：JSON 按 ~30KB 分块存入 `<script type="application/json" class="__data_chunk__">` 标签，JS 收集拼接后解析
+- **移动端适配**：侧栏隐藏、Tab 横滑、附件缩略图缩小
 
 ### 正则解析模式速查表
 
 | 解析目标 | 正则锚点 |
 |----------|---------|
-| 场景分解 | `## Scene Breakdown\n(.+?)(?=##|$)` |
-| Key Dialogue | `## Key Dialogue\n(.+?)(?=##|$)` |
-| 分镜表 (Key Frames) | `## Key Frames\n(.+?)(?=##|$)` |
+| 场景分解 | `## Scene Breakdown\n(.+?)(?=\n## [^#]|\Z)` |
+| Key Dialogue | `## Key Dialogue\n(.+?)(?=\n## [^#]|\Z)` |
+| 分镜表 (Key Frames) | `## Key Frames\n(.+?)(?=\n## [^#]|\Z)` |
 | Image Prompts | `### Frame (\d+): (.+?)\n\*\*Prompt:\*\*(.*?)` |
 | Video Prompts | `### Shot (\d+): (.+?)\n\*\*Prompt:\*\*(.*?)` |
 | 角色 (H2 + attrs) | `## (.+?)\n(.+?)(?=## |\Z)` |
@@ -2096,10 +2168,11 @@ tar --exclude='__pycache__' -czf /path/to/desktop/project-name.tar.gz -C /path/t
 4. **Voiceovers 初始化** — result 字典必须包含 `'voiceovers': []`，VO-only 集不会 KeyError
 5. **manifest.md 分区段解析** — 按 `##` 大标题切分区段独立解析，避免全局扫描导致的跨区污染
 
-**工作台陷阱**：
-- JS 函数插入：放在目标函数闭合 `}}` 之后，不要插在函数体内
-- 不要 f-string：用 `r"""..."""` + `str.replace()` 注入数据
-- 修改 JSON 后必须重新运行 `build_html.py`，工作台渲染的是嵌入的 JSON 快照
+**工作台 v4.0 陷阱**：
+- **JSON 格式必须含 `project` 和 `total_episodes`** — 标题从 `data['project']` 读取（不是 `manifest.title`）
+- **不要硬编码列数** — 分镜表头动态解析（8列/12列变化频繁）
+- **修改 JSON 后必须重新运行 `build_html.py`** — 工作台渲染的是嵌入的 JSON 快照
+- **`generate_index.py` 提取剧本对白用主模型** — 正则解析容易把动作描述混入对白（v3.1 实测 3 轮才调通）
 
 ## 注意事项
 
