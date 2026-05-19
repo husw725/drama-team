@@ -69,16 +69,21 @@ def parse_storyboard(md):
     m = re.search(r'## Key Frames \((\d+) shots\) \| Duration: (\d+)s \| Type: (\w+)', md)
     if m: result['stats'] = {'shots': int(m.group(1)), 'duration': int(m.group(2)), 'type': m.group(3)}
     
-    # Parse shots table (7 or 8 columns)
-    m = re.search(r'\| # \| Time \| Shot \| Camera \| Duration \| Description \| Characters \| Lighting \|\n.*?\n(.+?)(?=##|$)', md, re.DOTALL)
+    # Parse shots table (v3.1: 8 or 12 columns — dynamic header detection)
+    # Match the full table including header line
+    m = re.search(r'(\| # \| Time .+?\|)\n\|[-| ]+\n(.+?)(?=##|$)', md, re.DOTALL)
     if m:
-        for line in m.group(1).strip().split('\n'):
+        header_line = m.group(1)
+        body_lines = m.group(2)
+        headers = [h.strip() for h in header_line.split('|')[1:-1]]
+        for line in body_lines.strip().split('\n'):
             if not line.strip().startswith('|'): continue
             cells = [c.strip() for c in line.split('|')[1:-1]]
-            if len(cells) >= 8:
-                result['shots'].append({'#':cells[0],'Time':cells[1],'Shot':cells[2],'Camera':cells[3],'Duration':cells[4],'Description':cells[5],'Characters':cells[6],'Lighting':cells[7]})
-            elif len(cells) >= 7:
-                result['shots'].append({'#':cells[0],'Time':cells[1],'Shot':cells[2],'Camera':cells[3],'Duration':cells[4],'Description':cells[5],'Characters':cells[6],'Lighting':''})
+            if len(cells) == len(headers):
+                result['shots'].append(dict(zip(headers, cells)))
+            elif len(cells) >= len(headers):
+                shot_dict = dict(zip(headers, cells[:len(headers)]))
+                result['shots'].append(shot_dict)
     
     m = re.search(r'## Shot Notes\n\n?(.*?)(?=$)', md, re.DOTALL)
     if m:
