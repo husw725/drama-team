@@ -2089,8 +2089,8 @@ for i in range(1, 37):
 ## 生产工作台页面 (Index Page) — v4.0
 
 > 将三件套 MD 文件转换为交互式 SPA（单 HTML 文件），用于管理 AI 生图/视频流程、追踪进度、一键复制 Prompt。
-> **三文件架构 v4.0**：`generate_index.py`（MD → JSON） + `workbench/`（固定模板 + 构建脚本）
-> 详细规范见：`drama-prompts/workbench/` 或技能 `short-drama-production-index`
+> **三文件架构 v4.0**：`generate_index.py`（MD → JSON） + `short-drama-production-index/`（固定模板 + 构建脚本）
+> 详细规范见：`drama-prompts/short-drama-production-index/` 或技能 `short-drama-production-index`
 
 ### Step 1: `generate_index.py` — MD → JSON 解析器
 
@@ -2160,8 +2160,8 @@ python3 generate_index.py
 ### Step 3: 复制工作台风架 + 构建
 
 ```bash
-# 从 drama-prompts 复制 workbench 到项目
-cp -r ~/.hermes/tasks/drama-prompts/workbench/* /path/to/project/
+# 从 drama-prompts 复制 short-drama-production-index 到项目
+cp -r ~/.hermes/tasks/drama-prompts/short-drama-production-index/* /path/to/project/
 
 # 构建
 cd /path/to/project
@@ -2274,5 +2274,5 @@ tar --exclude='__pycache__' -czf /path/to/desktop/project-name.tar.gz -C /path/t
 - `novel-to-short-drama-adaptation` — 小说改编短剧流程
 - `short-drama-production-index` — 短剧工作台 JSON/HTML 生成
 - `drama-studio` — 11 阶段 Web UI 短剧制作系统
-- `seedance2-short-drama-workflow` — Seedance 2.0 短剧制作工作流
+- `seedance-prompt-optimizer` — Seedance 2.0 Prompt 优化器
 - `video-dubbing-indextts2` — IndexTTS 2.0 翻译配音工作流
